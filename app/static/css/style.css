@@ -1514,3 +1514,148 @@ ul, ol {
         grid-template-columns: 1fr;
     }
 }
+
+/* Дописать в конец app/static/css/style.css */
+
+/* ============================================
+   ЮРИДИЧЕСКИЕ СТРАНИЦЫ
+============================================ */
+
+.legal-page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 0;
+}
+
+.legal-page h1 {
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.legal-date {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 40px;
+}
+
+.legal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px;
+    line-height: 1.8;
+}
+
+.legal-content h2 {
+    color: var(--primary);
+    margin-top: 40px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.legal-content h2:first-child {
+    margin-top: 0;
+}
+
+.legal-content p {
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.legal-content ul {
+    margin: 12px 0;
+    padding-left: 24px;
+}
+
+.legal-content ul li {
+    list-style: disc;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.legal-content a {
+    color: var(--primary);
+    text-decoration: underline;
+}
+
+.legal-content a:hover {
+    color: var(--primary-hover);
+}
+
+.legal-content strong {
+    color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+    .legal-content {
+        padding: 24px;
+    }
+}
+
+/* Дописать в конец style.css */
+
+/* ============================================
+   ФУТЕР (ОБНОВЛЁННЫЙ)
+============================================ */
+
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.footer-links {
+    display: flex;
+    gap: 20px;
+}
+
+.footer-links a {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    transition: color 0.3s ease;
+}
+
+.footer-links a:hover {
+    color: var(--primary);
+}
+
+@media (max-width: 768px) {
+    .footer-content {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
+/* Дописать в конец style.css */
+
+.form-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.form-checkbox label {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    line-height: 1.5;
+}
+
+.form-checkbox input[type="checkbox"] {
+    margin-top: 4px;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--primary);
+    flex-shrink: 0;
+}
+
+.form-checkbox a {
+    color: var(--primary);
+}

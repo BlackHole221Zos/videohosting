@@ -93,9 +93,16 @@
     </main>
 
     <!-- ============ ФУТЕР ============ -->
+    <!-- Заменить footer в base.html -->
     <footer class="footer">
         <div class="container">
-            <p>© 2024 VidSphere — Космический видеохостинг 🌌</p>
+            <div class="footer-content">
+                <p>© 2025 VidSphere — Космический видеохостинг 🌌</p>
+                <div class="footer-links">
+                    <a href="{{ url_for('main.terms') }}">Пользовательское соглашение</a>
+                    <a href="{{ url_for('main.privacy') }}">Политика конфиденциальности</a>
+                </div>
+            </div>
         </div>
     </footer>
 

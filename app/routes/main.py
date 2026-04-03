@@ -94,3 +94,15 @@ def mood(mood_name):
                            mood_info=mood_info,
                            videos=videos
                            )
+
+
+@main_bp.route('/terms')
+def terms():
+    """Пользовательское соглашение"""
+    return render_template('legal/terms.html')
+
+
+@main_bp.route('/privacy')
+def privacy():
+    """Политика конфиденциальности"""
+    return render_template('legal/privacy.html')
