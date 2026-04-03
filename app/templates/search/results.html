@@ -1,0 +1,48 @@
+<!-- app/templates/search/results.html -->
+{% extends "base.html" %}
+
+{% block title %}Поиск: {{ query }} — VidSphere{% endblock %}
+
+{% block content %}
+<div class="search-page">
+    <h1>🔍 Результаты поиска</h1>
+
+    {% if query %}
+    <p class="search-query">По запросу «{{ query }}» найдено: {{ total }}</p>
+    {% endif %}
+
+    <!-- Фильтры -->
+    <form class="search-filters" method="GET" action="{{ url_for('search.search') }}">
+        <input type="hidden" name="q" value="{{ query }}">
+
+        <select name="mood" class="form-input form-select" onchange="this.form.submit()">
+            <option value="">Все настроения</option>
+            <option value="laugh" {% if mood_filter == 'laugh' %}selected{% endif %}>😂 Смех</option>
+            <option value="knowledge" {% if mood_filter == 'knowledge' %}selected{% endif %}>🧠 Знания</option>
+            <option value="peace" {% if mood_filter == 'peace' %}selected{% endif %}>🌸 Покой</option>
+            <option value="adrenaline" {% if mood_filter == 'adrenaline' %}selected{% endif %}>⚡ Адреналин</option>
+            <option value="inspiration" {% if mood_filter == 'inspiration' %}selected{% endif %}>✨ Вдохновение</option>
+        </select>
+
+        <select name="sort" class="form-input form-select" onchange="this.form.submit()">
+            <option value="date" {% if sort_by == 'date' %}selected{% endif %}>По дате</option>
+            <option value="views" {% if sort_by == 'views' %}selected{% endif %}>По просмотрам</option>
+            <option value="karma" {% if sort_by == 'karma' %}selected{% endif %}>По карме</option>
+        </select>
+    </form>
+
+    <!-- Результаты -->
+    {% if videos %}
+    <div class="video-grid">
+        {% for video in videos %}
+            {% include "partials/video_card.html" %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>😔 Ничего не найдено</p>
+        <p>Попробуйте изменить запрос или фильтры</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

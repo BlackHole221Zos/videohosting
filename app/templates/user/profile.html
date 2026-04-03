@@ -1,0 +1,83 @@
+<!-- app/templates/user/profile.html -->
+{% extends "base.html" %}
+
+{% block title %}{{ profile_user.username }} — VidSphere{% endblock %}
+
+{% block content %}
+<div class="profile-page">
+
+    <!-- Шапка профиля -->
+    <div class="profile-header">
+        <img
+            src="{{ url_for('static', filename='uploads/avatars/' + profile_user.avatar) }}"
+            alt="{{ profile_user.username }}"
+            class="profile-avatar"
+            onerror="this.src='{{ url_for('static', filename='img/default_avatar.png') }}'"
+        >
+
+        <div class="profile-info">
+            <h1>
+                {{ profile_user.username }}
+                {% if profile_user.is_admin() %}
+                    <span class="badge badge-admin">👑 Админ</span>
+                {% elif profile_user.is_moderator() %}
+                    <span class="badge badge-mod">🛡️ Модератор</span>
+                {% endif %}
+            </h1>
+
+            <p class="profile-bio">{{ profile_user.bio or 'Пользователь пока ничего не рассказал о себе' }}</p>
+
+            <div class="profile-stats">
+                <div class="stat">
+                    <strong>{{ profile_user.videos.count() }}</strong>
+                    <span>видео</span>
+                </div>
+                <div class="stat">
+                    <strong>{{ profile_user.followers_count() }}</strong>
+                    <span>подписчиков</span>
+                </div>
+                <div class="stat">
+                    <strong>{{ profile_user.following_count() }}</strong>
+                    <span>подписок</span>
+                </div>
+                <div class="stat">
+                    <strong>{{ profile_user.total_views() }}</strong>
+                    <span>просмотров</span>
+                </div>
+            </div>
+
+            <div class="profile-actions">
+                {% if user and user.id == profile_user.id %}
+                    <a href="{{ url_for('user.edit', username=profile_user.username) }}" class="btn btn-outline">
+                        ⚙️ Редактировать
+                    </a>
+                {% elif user %}
+                    {% if is_following %}
+                        <form action="{{ url_for('user.unfollow', username=profile_user.username) }}" method="POST">
+                            <button type="submit" class="btn btn-outline">✓ Вы подписаны</button>
+                        </form>
+                    {% else %}
+                        <form action="{{ url_for('user.follow', username=profile_user.username) }}" method="POST">
+                            <button type="submit" class="btn btn-primary">+ Подписаться</button>
+                        </form>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Видео пользователя -->
+    <div class="profile-videos">
+        <h2>📹 Видео ({{ videos|length }})</h2>
+
+        <div class="video-grid">
+            {% for video in videos %}
+                {% include "partials/video_card.html" %}
+            {% else %}
+                <p class="empty">Пользователь ещё не загрузил ни одного видео</p>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

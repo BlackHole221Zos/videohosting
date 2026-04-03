@@ -1,0 +1,104 @@
+<!-- app/templates/base.html -->
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}VidSphere{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- ============ ШАПКА ============ -->
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <!-- Логотип -->
+                <a href="{{ url_for('main.index') }}" class="logo">
+                    🌌 VidSphere
+                </a>
+
+                <!-- Поиск -->
+                <form class="search-form" action="{{ url_for('search.search') }}" method="GET">
+                    <input
+                        type="text"
+                        name="q"
+                        placeholder="🔍 Поиск видео..."
+                        value="{{ request.args.get('q', '') }}"
+                        class="search-input"
+                    >
+                    <button type="submit" class="search-btn">Найти</button>
+                </form>
+
+                <!-- Меню -->
+                <div class="nav-menu">
+                    {% if user %}
+                        <!-- Залогинен -->
+                        <a href="{{ url_for('video.upload') }}" class="nav-link">📤 Загрузить</a>
+                        <a href="{{ url_for('user.subscriptions') }}" class="nav-link">📺 Подписки</a>
+
+                        <div class="dropdown">
+                            <button class="dropdown-toggle">
+                                <img
+                                    src="{{ url_for('static', filename='uploads/avatars/' + user.avatar) }}"
+                                    alt="{{ user.username }}"
+                                    class="nav-avatar"
+                                    onerror="this.src='{{ url_for('static', filename='img/default_avatar.png') }}'"
+                                >
+                                <span>{{ user.username }}</span>
+                            </button>
+                            <div class="dropdown-menu">
+                                <a href="{{ url_for('user.profile', username=user.username) }}">👤 Профиль</a>
+                                <a href="{{ url_for('user.edit', username=user.username) }}">⚙️ Настройки</a>
+                                {% if user.is_admin() %}
+                                    <a href="#">👑 Админ-панель</a>
+                                {% endif %}
+                                <hr>
+                                <a href="{{ url_for('auth.logout') }}">🚪 Выйти</a>
+                            </div>
+                        </div>
+                    {% else %}
+                        <!-- Не залогинен -->
+                        <a href="{{ url_for('auth.login') }}" class="btn btn-outline">Войти</a>
+                        <a href="{{ url_for('auth.register') }}" class="btn btn-primary">Регистрация</a>
+                    {% endif %}
+
+                    <!-- Переключатель темы -->
+                    <button class="theme-toggle" id="themeToggle" title="Сменить тему">
+                        🌙
+                    </button>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- ============ КОНТЕНТ ============ -->
+    <main class="main">
+        <div class="container">
+            <!-- Flash сообщения -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="alerts">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                {{ message }}
+                                <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- ============ ФУТЕР ============ -->
+    <footer class="footer">
+        <div class="container">
+            <p>© 2024 VidSphere — Космический видеохостинг 🌌</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

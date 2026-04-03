@@ -1,0 +1,24 @@
+<!-- app/templates/user/subscriptions.html -->
+{% extends "base.html" %}
+
+{% block title %}Подписки — VidSphere{% endblock %}
+
+{% block content %}
+<div class="subscriptions-page">
+    <h1>📺 Лента подписок</h1>
+
+    {% if videos %}
+    <div class="video-grid">
+        {% for video in videos %}
+            {% include "partials/video_card.html" %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>📭 Здесь пока пусто</p>
+        <p>Подпишитесь на интересных авторов, и их видео появятся здесь!</p>
+        <a href="{{ url_for('main.index') }}" class="btn btn-primary">Найти авторов</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

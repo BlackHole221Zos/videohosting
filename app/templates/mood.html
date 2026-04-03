@@ -1,0 +1,23 @@
+<!-- app/templates/mood.html -->
+{% extends "base.html" %}
+
+{% block title %}{{ mood_info.emoji }} {{ mood_info.name }} — VidSphere{% endblock %}
+
+{% block content %}
+<div class="mood-page">
+    <h1>{{ mood_info.emoji }} {{ mood_info.name }}</h1>
+
+    {% if videos %}
+    <div class="video-grid">
+        {% for video in videos %}
+            {% include "partials/video_card.html" %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>Пока нет видео в этой категории</p>
+        <a href="{{ url_for('video.upload') }}" class="btn btn-primary">Загрузите первое!</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
