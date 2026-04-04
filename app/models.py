@@ -4,6 +4,9 @@ from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import db
 
+import secrets
+from datetime import timedelta
+
 # ============ ТАБЛИЦА ПОДПИСОК (many-to-many) ============
 
 subscriptions = db.Table('subscriptions',
@@ -271,6 +274,64 @@ class WatchHistory(db.Model):
     def __repr__(self):
         return f'<WatchHistory user={self.user_id} video={self.video_id}>'
 
+
+# ============ ТОКЕН ВОССТАНОВЛЕНИЯ ПАРОЛЯ ============
+
+class PasswordResetToken(db.Model):
+    """Токен для восстановления пароля"""
+
+    __tablename__ = 'password_reset_token'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    token = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=False)
+
+    # Связь с пользователем
+    user = db.relationship('User', backref='reset_tokens')
+
+    @staticmethod
+    def generate_token():
+        """Генерирует случайный токен"""
+        return secrets.token_urlsafe(32)
+
+    @staticmethod
+    def create_for_user(user):
+        """Создаёт токен для пользователя (действует 1 час)"""
+        # Удаляем старые токены этого пользователя
+        PasswordResetToken.query.filter_by(user_id=user.id).delete()
+
+        token = PasswordResetToken(
+            user_id=user.id,
+            token=PasswordResetToken.generate_token(),
+            expires_at=datetime.utcnow() + timedelta(hours=1)
+        )
+        db.session.add(token)
+        db.session.commit()
+        return token
+
+    def is_expired(self):
+        """Проверяет истёк ли токен"""
+        return datetime.utcnow() > self.expires_at
+
+    @staticmethod
+    def verify_token(token_string):
+        """Проверяет токен и возвращает пользователя или None"""
+        token = PasswordResetToken.query.filter_by(token=token_string).first()
+
+        if not token:
+            return None
+
+        if token.is_expired():
+            db.session.delete(token)
+            db.session.commit()
+            return None
+
+        return token.user
+
+    def __repr__(self):
+        return f'<PasswordResetToken user={self.user.username}>'
 
 # ============ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ БД ============
 

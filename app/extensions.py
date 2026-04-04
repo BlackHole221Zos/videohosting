@@ -1,7 +1,8 @@
 # app/extensions.py
 
 from flask_sqlalchemy import SQLAlchemy
+from flask_mail import Mail
 
-# Инициализация SQLAlchemy
-# Подключается к приложению в __init__.py
+# Инициализация расширений
 db = SQLAlchemy()
+mail = Mail()

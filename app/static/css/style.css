@@ -964,6 +964,13 @@ ul, ol {
     min-height: 60vh;
 }
 
+.auth-subtitle {
+    text-align: center;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    font-size: 0.95rem;
+}
+
 .auth-card {
     width: 100%;
     max-width: 420px;

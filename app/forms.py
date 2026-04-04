@@ -1,12 +1,9 @@
-# app/forms.py
-
 import re
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed, FileRequired
 from wtforms import StringField, PasswordField, TextAreaField, SelectField
-from wtforms.validators import DataRequired, Email, Length, EqualTo, ValidationError
+from wtforms.validators import DataRequired, Email, Length, EqualTo, ValidationError, Regexp
 from app.models import User
-
 
 # ============ ВАЛИДАТОР ПАРОЛЯ ============
 
@@ -199,4 +196,31 @@ class SearchForm(FlaskForm):
         ('date', 'По дате'),
         ('views', 'По просмотрам'),
         ('karma', 'По карме')
+    ])
+
+
+# ============ ФОРМА ВОССТАНОВЛЕНИЯ ПАРОЛЯ ============
+
+class ForgotPasswordForm(FlaskForm):
+    """Форма запроса восстановления пароля"""
+
+    email = StringField('Email', validators=[
+        DataRequired(message='Введите email'),
+        Email(message='Некорректный email')
+    ])
+
+
+class ResetPasswordForm(FlaskForm):
+    """Форма установки нового пароля"""
+
+    password = PasswordField('Новый пароль', validators=[
+        DataRequired(message='Введите пароль'),
+        Length(min=6, message='Минимум 6 символов'),
+        Regexp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$',
+               message='Пароль должен содержать заглавные, строчные буквы и цифры')
+    ])
+
+    password_confirm = PasswordField('Подтвердите пароль', validators=[
+        DataRequired(message='Подтвердите пароль'),
+        EqualTo('password', message='Пароли не совпадают')
     ])

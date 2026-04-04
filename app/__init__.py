@@ -3,7 +3,7 @@
 import os
 from flask import Flask, g, session
 from config import Config
-from app.extensions import db
+from app.extensions import db, mail
 
 
 def create_app(config_class=Config):
@@ -15,6 +15,7 @@ def create_app(config_class=Config):
 
     # Инициализация расширений
     db.init_app(app)
+    mail.init_app(app)
 
     # Создание папок для загрузок (если не существуют)
     upload_paths = [
