@@ -12,6 +12,9 @@ document.addEventListener('DOMContentLoaded', function() {
     initFileUpload();
     initAvatarPreview();
     initAutoHideAlerts();
+    initAccordion();
+    initConfirmations();
+    initSubscriptionsCarousel();
 });
 
 
@@ -66,36 +69,29 @@ function initHeroCarousel() {
 
     // Функция переключения слайда
     function goToSlide(index) {
-        // Убираем активный класс со всех
         slides.forEach(slide => slide.classList.remove('active'));
         dots.forEach(dot => dot.classList.remove('active'));
 
-        // Устанавливаем новый индекс
         currentIndex = index;
         if (currentIndex >= slides.length) currentIndex = 0;
         if (currentIndex < 0) currentIndex = slides.length - 1;
 
-        // Активируем нужный слайд
         slides[currentIndex].classList.add('active');
         dots[currentIndex].classList.add('active');
     }
 
-    // Следующий слайд
     function nextSlide() {
         goToSlide(currentIndex + 1);
     }
 
-    // Запуск автопрокрутки
     function startAutoplay() {
-        interval = setInterval(nextSlide, 5000); // 5 секунд
+        interval = setInterval(nextSlide, 5000);
     }
 
-    // Остановка автопрокрутки
     function stopAutoplay() {
         clearInterval(interval);
     }
 
-    // Клики по точкам
     dots.forEach((dot, index) => {
         dot.addEventListener('click', function() {
             stopAutoplay();
@@ -104,11 +100,9 @@ function initHeroCarousel() {
         });
     });
 
-    // Пауза при наведении
     carousel.addEventListener('mouseenter', stopAutoplay);
     carousel.addEventListener('mouseleave', startAutoplay);
 
-    // Запускаем
     startAutoplay();
 }
 
@@ -127,11 +121,9 @@ function initMoodTabs() {
         tab.addEventListener('click', function() {
             const mood = this.getAttribute('data-mood');
 
-            // Убираем активный класс
             tabs.forEach(t => t.classList.remove('active'));
             panels.forEach(p => p.classList.remove('active'));
 
-            // Активируем выбранный
             this.classList.add('active');
 
             const targetPanel = document.querySelector(`.mood-panel[data-mood="${mood}"]`);
@@ -151,8 +143,13 @@ function initFileUpload() {
     const fileInput = document.getElementById('videoInput');
     if (!fileInput) return;
 
-    const fileLabel = fileInput.closest('.file-upload').querySelector('.file-label');
-    const fileText = fileLabel.querySelector('.file-text');
+    const fileUpload = fileInput.closest('.file-upload');
+    if (!fileUpload) return;
+
+    const fileLabel = fileUpload.querySelector('.file-label');
+    const fileText = fileUpload.querySelector('.file-text');
+
+    if (!fileLabel || !fileText) return;
 
     fileInput.addEventListener('change', function() {
         if (this.files && this.files[0]) {
@@ -224,7 +221,6 @@ function initAutoHideAlerts() {
     const alerts = document.querySelectorAll('.alert');
 
     alerts.forEach(alert => {
-        // Автоскрытие через 5 секунд
         setTimeout(() => {
             alert.style.opacity = '0';
             alert.style.transform = 'translateY(-10px)';
@@ -235,14 +231,82 @@ function initAutoHideAlerts() {
 
 
 // ============================================
+//   АККОРДЕОН ПОДПИСОК
+// ============================================
+
+function initAccordion() {
+    const headers = document.querySelectorAll('.accordion-header');
+
+    headers.forEach(header => {
+        header.addEventListener('click', function(e) {
+            if (e.target.closest('.unsub-form')) return;
+
+            const item = this.closest('.accordion-item');
+            item.classList.toggle('open');
+        });
+    });
+}
+
+
+// ============================================
 //   ПОДТВЕРЖДЕНИЕ УДАЛЕНИЯ
 // ============================================
 
-// Используется inline: onsubmit="return confirm('Удалить?')"
+function initConfirmations() {
+    // Очистка истории
+    const clearForm = document.querySelector('.clear-history-form');
+    if (clearForm) {
+        clearForm.addEventListener('submit', function(e) {
+            if (!confirm('Очистить всю историю просмотров?')) {
+                e.preventDefault();
+            }
+        });
+    }
+
+    // Удаление видео
+    const deleteForm = document.querySelector('.delete-video-form');
+    if (deleteForm) {
+        deleteForm.addEventListener('submit', function(e) {
+            if (!confirm('Удалить это видео? Это действие нельзя отменить.')) {
+                e.preventDefault();
+            }
+        });
+    }
+}
 
 
 // ============================================
-//   КОПИРОВАНИЕ ССЫЛКИ (для будущего)
+//   КАРУСЕЛЬ ПОДПИСОК
+// ============================================
+
+function initSubscriptionsCarousel() {
+    const bubbles = document.querySelectorAll('.channel-bubble');
+    const videoBlocks = document.querySelectorAll('.channel-videos');
+
+    if (bubbles.length === 0) return;
+
+    bubbles.forEach(bubble => {
+        bubble.addEventListener('click', function() {
+            const channelId = this.dataset.channelId;
+
+            // Убираем активный класс со всех
+            bubbles.forEach(b => b.classList.remove('active'));
+            videoBlocks.forEach(v => v.classList.remove('active'));
+
+            // Активируем выбранный
+            this.classList.add('active');
+
+            const targetVideos = document.querySelector(`.channel-videos[data-channel-id="${channelId}"]`);
+            if (targetVideos) {
+                targetVideos.classList.add('active');
+            }
+        });
+    });
+}
+
+
+// ============================================
+//   ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 // ============================================
 
 function copyToClipboard(text) {
@@ -252,11 +316,6 @@ function copyToClipboard(text) {
         console.error('Ошибка копирования:', err);
     });
 }
-
-
-// ============================================
-//   TOAST УВЕДОМЛЕНИЯ (для будущего)
-// ============================================
 
 function showToast(message, type = 'info') {
     const toast = document.createElement('div');
@@ -274,36 +333,4 @@ function showToast(message, type = 'info') {
         toast.style.opacity = '0';
         setTimeout(() => toast.remove(), 300);
     }, 3000);
-}
-
-
-// ============================================
-//   ЛЕНИВАЯ ЗАГРУЗКА ИЗОБРАЖЕНИЙ
-// ============================================
-
-// Используется атрибут loading="lazy" в HTML
-
-
-// ============================================
-//   БЕСКОНЕЧНАЯ ПРОКРУТКА (для будущего)
-// ============================================
-
-function initInfiniteScroll(callback) {
-    let loading = false;
-
-    window.addEventListener('scroll', function() {
-        if (loading) return;
-
-        const scrollTop = window.scrollY;
-        const windowHeight = window.innerHeight;
-        const documentHeight = document.documentElement.scrollHeight;
-
-        // Если до конца страницы осталось меньше 200px
-        if (scrollTop + windowHeight >= documentHeight - 200) {
-            loading = true;
-            callback().finally(() => {
-                loading = false;
-            });
-        }
-    });
 }

@@ -2,10 +2,11 @@
 
 from flask import Blueprint, render_template, redirect, url_for, flash, g, request, abort
 from app.extensions import db
-from app.models import User, Video
+from app.models import User, Video, WatchHistory
 from app.forms import ProfileEditForm
 from app.utils.decorators import login_required
 from app.utils.helpers import save_avatar
+from datetime import datetime, timedelta
 
 user_bp = Blueprint('user', __name__)
 
@@ -19,7 +20,6 @@ def profile(username):
     user = User.query.filter_by(username=username).first_or_404()
     videos = Video.query.filter_by(user_id=user.id).order_by(Video.created_at.desc()).all()
 
-    # Проверка подписки
     is_following = False
     if g.user and g.user.id != user.id:
         is_following = g.user.is_following(user)
@@ -40,7 +40,6 @@ def edit(username):
 
     user = User.query.filter_by(username=username).first_or_404()
 
-    # Только владелец может редактировать
     if g.user.id != user.id:
         abort(403)
 
@@ -51,18 +50,15 @@ def edit(username):
         user.email = form.email.data.lower()
         user.bio = form.bio.data or ''
 
-        # Аватар
         if form.avatar.data:
             avatar_filename = save_avatar(form.avatar.data, user.username)
             if avatar_filename:
                 user.avatar = avatar_filename
 
         db.session.commit()
-
         flash('Профиль обновлён!', 'success')
         return redirect(url_for('user.profile', username=user.username))
 
-    # Заполняем форму текущими данными
     if request.method == 'GET':
         form.username.data = user.username
         form.email.data = user.email
@@ -76,8 +72,7 @@ def edit(username):
 @user_bp.route('/user/<username>/follow', methods=['POST'])
 @login_required
 def follow(username):
-    """Подписаться на пользователя"""
-
+    """Подписаться"""
     user = User.query.filter_by(username=username).first_or_404()
 
     if user.id == g.user.id:
@@ -86,9 +81,8 @@ def follow(username):
 
     g.user.follow(user)
     db.session.commit()
-
     flash(f'Вы подписались на {user.username}!', 'success')
-    return redirect(url_for('user.profile', username=username))
+    return redirect(request.referrer or url_for('user.profile', username=username))
 
 
 # ============ ОТПИСАТЬСЯ ============
@@ -96,32 +90,96 @@ def follow(username):
 @user_bp.route('/user/<username>/unfollow', methods=['POST'])
 @login_required
 def unfollow(username):
-    """Отписаться от пользователя"""
-
+    """Отписаться"""
     user = User.query.filter_by(username=username).first_or_404()
 
     g.user.unfollow(user)
     db.session.commit()
-
     flash(f'Вы отписались от {user.username}', 'info')
-    return redirect(url_for('user.profile', username=username))
+    return redirect(request.referrer or url_for('user.profile', username=username))
 
 
-# ============ ЛЕНТА ПОДПИСОК ============
+# ============ ПОДПИСКИ (КАНАЛЫ С ВИДЕО) ============
 
 @user_bp.route('/subscriptions')
 @login_required
 def subscriptions():
-    """Лента видео от авторов на которых подписан"""
+    """Каналы на которые подписан с их последними видео"""
 
-    # ID авторов на которых подписан
-    following_ids = [u.id for u in g.user.following.all()]
+    channels = g.user.following.order_by(User.username).all()
 
-    if following_ids:
-        videos = Video.query.filter(
-            Video.user_id.in_(following_ids)
-        ).order_by(Video.created_at.desc()).limit(50).all()
-    else:
-        videos = []
+    # Подгружаем последние 4 видео каждого канала
+    channels_data = []
+    for channel in channels:
+        recent = channel.videos.order_by(Video.created_at.desc()).limit(4).all()
+        channels_data.append({
+            'user': channel,
+            'recent_videos': recent
+        })
 
-    return render_template('user/subscriptions.html', videos=videos)
+    return render_template('user/subscriptions.html', channels_data=channels_data)
+
+
+# ============ ИСТОРИЯ ПРОСМОТРОВ ============
+
+@user_bp.route('/history')
+@login_required
+def history():
+    """История просмотров с группировкой по датам"""
+
+    history_items = WatchHistory.query.filter_by(user_id=g.user.id) \
+        .order_by(WatchHistory.watched_at.desc()) \
+        .limit(100).all()
+
+    today = datetime.utcnow().date()
+    yesterday = today - timedelta(days=1)
+    week_ago = today - timedelta(days=7)
+
+    grouped = {
+        'today': [],
+        'yesterday': [],
+        'this_week': [],
+        'earlier': []
+    }
+
+    for item in history_items:
+        d = item.watched_at.date()
+        if d == today:
+            grouped['today'].append(item)
+        elif d == yesterday:
+            grouped['yesterday'].append(item)
+        elif d > week_ago:
+            grouped['this_week'].append(item)
+        else:
+            grouped['earlier'].append(item)
+
+    return render_template('user/history.html', grouped=grouped)
+
+
+# ============ УДАЛИТЬ ИЗ ИСТОРИИ ============
+
+@user_bp.route('/history/<int:history_id>/delete', methods=['POST'])
+@login_required
+def delete_history_item(history_id):
+    """Удалить одну запись"""
+    item = WatchHistory.query.get_or_404(history_id)
+
+    if item.user_id != g.user.id:
+        abort(403)
+
+    db.session.delete(item)
+    db.session.commit()
+    flash('Удалено из истории', 'info')
+    return redirect(url_for('user.history'))
+
+
+# ============ ОЧИСТИТЬ ИСТОРИЮ ============
+
+@user_bp.route('/history/clear', methods=['POST'])
+@login_required
+def clear_history():
+    """Очистить всю историю"""
+    WatchHistory.query.filter_by(user_id=g.user.id).delete()
+    db.session.commit()
+    flash('История очищена', 'success')
+    return redirect(url_for('user.history'))

@@ -1,0 +1,31 @@
+<!-- app/templates/user/partials/history_item.html -->
+<div class="history-item">
+    <a href="{{ url_for('video.watch', video_id=item.video.id) }}" class="history-thumb">
+        <img
+            src="{{ url_for('static', filename='uploads/thumbnails/' + item.video.thumbnail) }}"
+            alt="{{ item.video.title }}"
+            loading="lazy"
+            onerror="this.src='{{ url_for('static', filename='img/default_thumb.svg') }}'"
+        >
+        <span class="history-mood">{{ item.video.mood_emoji() }}</span>
+    </a>
+
+    <div class="history-info">
+        <a href="{{ url_for('video.watch', video_id=item.video.id) }}" class="history-title">
+            {{ item.video.title }}
+        </a>
+        <div class="history-meta">
+            <a href="{{ url_for('user.profile', username=item.video.author.username) }}">
+                {{ item.video.author.username }}
+            </a>
+            • {{ item.video.views }} просмотров • 🔥 {{ item.video.karma }}
+        </div>
+        <div class="history-meta">
+            Просмотрено: {{ item.watched_at.strftime('%d.%m.%Y в %H:%M') }}
+        </div>
+    </div>
+
+    <form action="{{ url_for('user.delete_history_item', history_id=item.id) }}" method="POST" style="margin-left: auto;">
+        <button type="submit" class="history-remove" title="Удалить из истории">×</button>
+    </form>
+</div>

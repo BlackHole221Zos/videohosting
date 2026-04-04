@@ -4,156 +4,186 @@
 {% block title %}{{ video.title }} — VidSphere{% endblock %}
 
 {% block content %}
-<div class="watch-page">
+<div class="watch-layout">
 
-    <!-- Видео плеер -->
-    <div class="video-player-container">
-        <video
-            class="video-player"
-            controls
-            autoplay
-            poster="{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}"
-        >
-            <source src="{{ url_for('static', filename='uploads/videos/' + video.filename) }}" type="video/mp4">
-            Ваш браузер не поддерживает видео
-        </video>
-    </div>
+    <!-- ЛЕВАЯ КОЛОНКА -->
+    <div class="watch-main">
 
-    <!-- Информация о видео -->
-    <div class="video-details">
-        <div class="video-header">
-            <h1>{{ video.title }}</h1>
-            <div class="video-stats">
-                <span>{{ video.views }} 👁️</span>
-                <span>{{ video.created_at.strftime('%d.%m.%Y') }}</span>
-                <span class="mood-tag">{{ video.mood_emoji() }} {{ video.mood_name() }}</span>
+        <!-- Плеер с Ambilight -->
+        <div class="player-wrapper">
+            <div class="player-glow"
+                 style="background-image: url('{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}')">
             </div>
-        </div>
-
-        <!-- Реакции (Карма) -->
-        <div class="reactions">
-            <form action="{{ url_for('video.react', video_id=video.id, reaction_type='fire') }}" method="POST" class="reaction-form">
-                <button type="submit" class="reaction-btn {% if user_reaction == 'fire' %}active{% endif %}">
-                    🔥 <span>{{ reactions_count.fire }}</span>
-                </button>
-            </form>
-            <form action="{{ url_for('video.react', video_id=video.id, reaction_type='good') }}" method="POST" class="reaction-form">
-                <button type="submit" class="reaction-btn {% if user_reaction == 'good' %}active{% endif %}">
-                    👍 <span>{{ reactions_count.good }}</span>
-                </button>
-            </form>
-            <form action="{{ url_for('video.react', video_id=video.id, reaction_type='bad') }}" method="POST" class="reaction-form">
-                <button type="submit" class="reaction-btn {% if user_reaction == 'bad' %}active{% endif %}">
-                    👎 <span>{{ reactions_count.bad }}</span>
-                </button>
-            </form>
-            <div class="karma-total">
-                Карма: <strong>{{ video.karma }}</strong>
-            </div>
-        </div>
-
-        <!-- Автор -->
-        <div class="video-author-card">
-            <a href="{{ url_for('user.profile', username=video.author.username) }}" class="author-link">
-                <img
-                    src="{{ url_for('static', filename='uploads/avatars/' + video.author.avatar) }}"
-                    alt="{{ video.author.username }}"
-                    class="author-avatar"
-                    onerror="this.src='{{ url_for('static', filename='img/default_avatar.png') }}'"
+            <div class="player-container">
+                <video
+                    class="video-player"
+                    controls
+                    autoplay
+                    poster="{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}"
                 >
-                <div class="author-info">
-                    <span class="author-name">
-                        {{ video.author.username }}
-                        {% if video.author.is_admin() %}👑{% endif %}
-                    </span>
-                    <span class="author-subs">{{ video.author.followers_count() }} подписчиков</span>
-                </div>
-            </a>
+                    <source src="{{ url_for('static', filename='uploads/videos/' + video.filename) }}" type="video/mp4">
+                </video>
+            </div>
+        </div>
 
-            {% if user and user.id != video.author.id %}
-                {% if user.is_following(video.author) %}
+        <!-- Заголовок -->
+        <h1 class="watch-title">{{ video.title }}</h1>
+
+        <!-- Панель действий -->
+        <div class="watch-bar">
+            <!-- Автор + подписка -->
+            <div class="watch-author">
+                <a href="{{ url_for('user.profile', username=video.author.username) }}" class="watch-author-link">
+                    <img
+                        src="{{ url_for('static', filename='uploads/avatars/' + video.author.avatar) }}"
+                        class="watch-author-avatar"
+                        onerror="this.src='{{ url_for('static', filename='img/default_avatar.svg') }}'"
+                    >
+                    <div>
+                        <div class="watch-author-name">
+                            {{ video.author.username }}
+                            {% if video.author.is_admin() %}👑{% endif %}
+                        </div>
+                        <div class="watch-author-subs">{{ video.author.followers_count() }} подписчиков</div>
+                    </div>
+                </a>
+
+                {% if user and user.id != video.author.id %}
+                    {% if user.is_following(video.author) %}
                     <form action="{{ url_for('user.unfollow', username=video.author.username) }}" method="POST">
-                        <button type="submit" class="btn btn-outline btn-sm">✓ Подписан</button>
+                        <button type="submit" class="subscribe-btn subscribed btn-sm">
+                            <span class="btn-text-default">✓ Подписан</span>
+                            <span class="btn-text-hover">Отписаться</span>
+                        </button>
                     </form>
-                {% else %}
+                    {% else %}
                     <form action="{{ url_for('user.follow', username=video.author.username) }}" method="POST">
-                        <button type="submit" class="btn btn-primary btn-sm">+ Подписаться</button>
+                        <button type="submit" class="subscribe-btn not-subscribed btn-sm">+ Подписаться</button>
                     </form>
+                    {% endif %}
                 {% endif %}
-            {% endif %}
+            </div>
 
-            {% if user and (user.id == video.author.id or user.is_admin()) %}
-                <form action="{{ url_for('video.delete', video_id=video.id) }}" method="POST"
-                      onsubmit="return confirm('Удалить видео?')">
-                    <button type="submit" class="btn btn-danger btn-sm">🗑️ Удалить</button>
-                </form>
-            {% endif %}
+            <!-- Реакции -->
+            <div class="watch-reactions">
+                <div class="reaction-pill">
+                    <form action="{{ url_for('video.react', video_id=video.id, reaction_type='fire') }}" method="POST">
+                        <button type="submit" class="pill-btn {% if user_reaction == 'fire' %}active{% endif %}">
+                            🔥 {{ reactions_count.fire }}
+                        </button>
+                    </form>
+                    <form action="{{ url_for('video.react', video_id=video.id, reaction_type='good') }}" method="POST">
+                        <button type="submit" class="pill-btn {% if user_reaction == 'good' %}active{% endif %}">
+                            👍 {{ reactions_count.good }}
+                        </button>
+                    </form>
+                    <form action="{{ url_for('video.react', video_id=video.id, reaction_type='bad') }}" method="POST">
+                        <button type="submit" class="pill-btn {% if user_reaction == 'bad' %}active{% endif %}">
+                            👎 {{ reactions_count.bad }}
+                        </button>
+                    </form>
+                </div>
+                <span class="karma-pill">Карма: <strong>{{ video.karma }}</strong></span>
+            </div>
         </div>
 
         <!-- Описание -->
-        {% if video.description %}
-        <div class="video-description">
+        <div class="watch-desc">
+            <div class="watch-desc-stats">
+                {{ video.views }} просмотров • {{ video.created_at.strftime('%d.%m.%Y') }}
+                <span class="mood-tag">{{ video.mood_emoji() }} {{ video.mood_name() }}</span>
+            </div>
+            {% if video.description %}
             <p>{{ video.description }}</p>
-        </div>
-        {% endif %}
-
-        <!-- Теги -->
-        {% if video.tags %}
-        <div class="video-tags">
-            {% for tag in video.get_tags_list() %}
-                <a href="{{ url_for('search.search', q=tag) }}" class="tag">#{{ tag }}</a>
-            {% endfor %}
-        </div>
-        {% endif %}
-    </div>
-
-    <!-- Комментарии -->
-    <div class="comments-section">
-        <h3>💬 Комментарии ({{ comments|length }})</h3>
-
-        {% if user %}
-        <form method="POST" class="comment-form">
-            {{ form.hidden_tag() }}
-            <div class="comment-input-group">
-                {{ form.text(class="form-input", placeholder="Написать комментарий...", rows=2) }}
-                <button type="submit" class="btn btn-primary">Отправить</button>
-            </div>
-            {% if form.text.errors %}
-                <span class="form-error">{{ form.text.errors[0] }}</span>
             {% endif %}
-        </form>
-        {% else %}
-        <p class="comment-login">
-            <a href="{{ url_for('auth.login') }}">Войдите</a>, чтобы оставить комментарий
-        </p>
-        {% endif %}
-
-        <div class="comments-list">
-            {% for comment in comments %}
-            <div class="comment">
-                <a href="{{ url_for('user.profile', username=comment.author.username) }}">
-                    <img
-                        src="{{ url_for('static', filename='uploads/avatars/' + comment.author.avatar) }}"
-                        alt="{{ comment.author.username }}"
-                        class="comment-avatar"
-                        onerror="this.src='{{ url_for('static', filename='img/default_avatar.png') }}'"
-                    >
-                </a>
-                <div class="comment-body">
-                    <div class="comment-header">
-                        <a href="{{ url_for('user.profile', username=comment.author.username) }}" class="comment-author">
-                            {{ comment.author.username }}
-                        </a>
-                        <span class="comment-date">{{ comment.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
-                    </div>
-                    <p class="comment-text">{{ comment.text }}</p>
-                </div>
+            {% if video.tags %}
+            <div class="video-tags">
+                {% for tag in video.get_tags_list() %}
+                <a href="{{ url_for('search.search', q=tag) }}" class="tag">#{{ tag }}</a>
+                {% endfor %}
             </div>
+            {% endif %}
+
+            {% if user and (user.id == video.author.id or user.is_admin()) %}
+            <form action="{{ url_for('video.delete', video_id=video.id) }}" method="POST" class="delete-video-form">
+                <button type="submit" class="btn btn-danger btn-sm">🗑️ Удалить видео</button>
+            </form>
+            {% endif %}
+        </div>
+
+        <!-- Комментарии -->
+        <div class="watch-comments">
+            <h3>💬 Комментарии ({{ comments|length }})</h3>
+
+            {% if user %}
+            <form method="POST" class="comment-write">
+                {{ form.hidden_tag() }}
+                <img
+                    src="{{ url_for('static', filename='uploads/avatars/' + user.avatar) }}"
+                    class="comment-my-avatar"
+                    onerror="this.src='{{ url_for('static', filename='img/default_avatar.svg') }}'"
+                >
+                <div class="comment-write-body">
+                    {{ form.text(class="form-input", placeholder="Написать комментарий...", rows=2) }}
+                    {% if form.text.errors %}
+                    <span class="form-error">{{ form.text.errors[0] }}</span>
+                    {% endif %}
+                    <button type="submit" class="btn btn-primary btn-sm">Отправить</button>
+                </div>
+            </form>
             {% else %}
-            <p class="empty">Пока нет комментариев. Будьте первым!</p>
-            {% endfor %}
+            <p class="comment-login"><a href="{{ url_for('auth.login') }}">Войдите</a>, чтобы комментировать</p>
+            {% endif %}
+
+            <div class="comment-list">
+                {% for comment in comments %}
+                <div class="comment-item">
+                    <a href="{{ url_for('user.profile', username=comment.author.username) }}">
+                        <img
+                            src="{{ url_for('static', filename='uploads/avatars/' + comment.author.avatar) }}"
+                            class="comment-avatar"
+                            onerror="this.src='{{ url_for('static', filename='img/default_avatar.svg') }}'"
+                        >
+                    </a>
+                    <div class="comment-body">
+                        <div class="comment-head">
+                            <a href="{{ url_for('user.profile', username=comment.author.username) }}" class="comment-author">
+                                @{{ comment.author.username }}
+                            </a>
+                            <span class="comment-date">{{ comment.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+                        </div>
+                        <p class="comment-text">{{ comment.text }}</p>
+                    </div>
+                </div>
+                {% else %}
+                <p class="empty">Пока нет комментариев. Будьте первым!</p>
+                {% endfor %}
+            </div>
         </div>
     </div>
 
+    <!-- ПРАВАЯ КОЛОНКА -->
+    <aside class="watch-sidebar">
+        <h3>Похожие видео</h3>
+        <div class="related-list">
+            {% for rv in related_videos %}
+            <a href="{{ url_for('video.watch', video_id=rv.id) }}" class="related-card">
+                <div class="related-thumb">
+                    <img
+                        src="{{ url_for('static', filename='uploads/thumbnails/' + rv.thumbnail) }}"
+                        alt="{{ rv.title }}"
+                        onerror="this.src='{{ url_for('static', filename='img/default_thumb.svg') }}'"
+                    >
+                    <span class="related-views">{{ rv.views }} 👁️</span>
+                </div>
+                <div class="related-info">
+                    <div class="related-title">{{ rv.title|truncate(40) }}</div>
+                    <div class="related-author">{{ rv.author.username }}</div>
+                    <div class="related-meta">{{ rv.karma }} 🔥</div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </aside>
 </div>
 {% endblock %}

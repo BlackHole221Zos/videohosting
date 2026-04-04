@@ -1,0 +1,78 @@
+<!-- app/templates/user/history.html -->
+{% extends "base.html" %}
+
+{% block title %}История просмотров — VidSphere{% endblock %}
+
+{% block content %}
+<div class="history-page">
+    <div class="history-header">
+        <h1>👁️ История просмотров</h1>
+
+        {% if grouped.today or grouped.yesterday or grouped.this_week or grouped.earlier %}
+        <form action="{{ url_for('user.clear_history') }}" method="POST" class="clear-history-form">
+            <button type="submit" class="btn btn-outline btn-sm">
+                🗑️ Очистить историю
+            </button>
+        </form>
+        {% endif %}
+    </div>
+
+    {% if grouped.today or grouped.yesterday or grouped.this_week or grouped.earlier %}
+
+        <!-- Сегодня -->
+        {% if grouped.today %}
+        <div class="history-section">
+            <h3 class="history-date">Сегодня</h3>
+            <div class="history-list">
+                {% for item in grouped.today %}
+                    {% include 'user/partials/history_item.html' %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Вчера -->
+        {% if grouped.yesterday %}
+        <div class="history-section">
+            <h3 class="history-date">Вчера</h3>
+            <div class="history-list">
+                {% for item in grouped.yesterday %}
+                    {% include 'user/partials/history_item.html' %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- На этой неделе -->
+        {% if grouped.this_week %}
+        <div class="history-section">
+            <h3 class="history-date">На этой неделе</h3>
+            <div class="history-list">
+                {% for item in grouped.this_week %}
+                    {% include 'user/partials/history_item.html' %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Ранее -->
+        {% if grouped.earlier %}
+        <div class="history-section">
+            <h3 class="history-date">Ранее</h3>
+            <div class="history-list">
+                {% for item in grouped.earlier %}
+                    {% include 'user/partials/history_item.html' %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+    {% else %}
+        <div class="empty-state">
+            <p>📭 История просмотров пуста</p>
+            <p>Смотрите видео, и они появятся здесь!</p>
+            <a href="{{ url_for('main.index') }}" class="btn btn-primary">Найти видео</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,22 +1,89 @@
 <!-- app/templates/user/subscriptions.html -->
 {% extends "base.html" %}
 
-{% block title %}Подписки — VidSphere{% endblock %}
+{% block title %}Мои подписки — VidSphere{% endblock %}
 
 {% block content %}
 <div class="subscriptions-page">
-    <h1>📺 Лента подписок</h1>
+    <h1>📺 Мои подписки</h1>
 
-    {% if videos %}
-    <div class="video-grid">
-        {% for video in videos %}
-            {% include "partials/video_card.html" %}
+    {% if channels_data %}
+
+    <!-- Карусель аватарок -->
+    <div class="channels-carousel">
+        {% for item in channels_data %}
+        {% set channel = item.user %}
+        <div class="channel-bubble {% if loop.first %}active{% endif %}" data-channel-id="{{ channel.id }}">
+            <div class="bubble-avatar-wrap">
+                <img
+                    src="{{ url_for('static', filename='uploads/avatars/' + channel.avatar) }}"
+                    alt="{{ channel.username }}"
+                    class="bubble-avatar"
+                    onerror="this.src='{{ url_for('static', filename='img/default_avatar.svg') }}'"
+                >
+                <span class="bubble-indicator"></span>
+            </div>
+            <span class="bubble-name">{{ channel.username }}</span>
+        </div>
         {% endfor %}
     </div>
+
+    <!-- Видео выбранного канала -->
+    <div class="channel-videos-container">
+        {% for item in channels_data %}
+        {% set channel = item.user %}
+        <div class="channel-videos {% if loop.first %}active{% endif %}" data-channel-id="{{ channel.id }}">
+
+            <!-- Шапка канала -->
+            <div class="channel-header">
+                <a href="{{ url_for('user.profile', username=channel.username) }}" class="channel-header-link">
+                    <img
+                        src="{{ url_for('static', filename='uploads/avatars/' + channel.avatar) }}"
+                        alt="{{ channel.username }}"
+                        class="channel-header-avatar"
+                        onerror="this.src='{{ url_for('static', filename='img/default_avatar.svg') }}'"
+                    >
+                    <div class="channel-header-info">
+                        <div class="channel-header-name">{{ channel.username }}</div>
+                        <div class="channel-header-stats">
+                            {{ channel.videos.count() }} видео • {{ channel.followers_count() }} подписчиков
+                        </div>
+                    </div>
+                </a>
+
+                <div class="channel-header-actions">
+                    <form action="{{ url_for('user.unfollow', username=channel.username) }}" method="POST">
+                        <button type="submit" class="subscribe-btn subscribed">
+                            <span class="btn-text-default">✓ Подписан</span>
+                            <span class="btn-text-hover">Отписаться</span>
+                        </button>
+                    </form>
+                    <a href="{{ url_for('user.profile', username=channel.username) }}" class="btn btn-outline btn-sm">
+                        На канал →
+                    </a>
+                </div>
+            </div>
+
+            <!-- Сетка видео -->
+            {% if item.recent_videos %}
+            <div class="video-grid">
+                {% for video in item.recent_videos %}
+                    {% include "partials/video_card.html" %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty">
+                <p>😴 Автор пока не загрузил видео</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
     {% else %}
     <div class="empty-state">
-        <p>📭 Здесь пока пусто</p>
-        <p>Подпишитесь на интересных авторов, и их видео появятся здесь!</p>
+        <p>📭 Вы пока ни на кого не подписаны</p>
+        <p>Найдите интересных авторов и подпишитесь!</p>
         <a href="{{ url_for('main.index') }}" class="btn btn-primary">Найти авторов</a>
     </div>
     {% endif %}

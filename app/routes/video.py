@@ -52,6 +52,8 @@ def upload():
 
 # ============ ПРОСМОТР ВИДЕО ============
 
+# В app/routes/video.py замени функцию watch()
+
 @video_bp.route('/video/<int:video_id>', methods=['GET', 'POST'])
 def watch(video_id):
     """Страница просмотра видео"""
@@ -59,12 +61,11 @@ def watch(video_id):
     video = Video.query.get_or_404(video_id)
     form = CommentForm()
 
-    # Увеличиваем счётчик просмотров
+    # Увеличиваем просмотры
     video.views += 1
 
-    # Записываем в историю (если залогинен)
+    # Записываем в историю
     if g.user:
-        # Проверяем, нет ли уже записи за последний час
         existing = WatchHistory.query.filter_by(
             user_id=g.user.id,
             video_id=video.id
@@ -76,7 +77,7 @@ def watch(video_id):
 
     db.session.commit()
 
-    # Обработка комментария
+    # Комментарий
     if form.validate_on_submit() and g.user:
         comment = Comment(
             text=form.text.data,
@@ -85,14 +86,13 @@ def watch(video_id):
         )
         db.session.add(comment)
         db.session.commit()
-
         flash('Комментарий добавлен!', 'success')
         return redirect(url_for('video.watch', video_id=video.id))
 
-    # Получаем комментарии
-    comments = Comment.query.filter_by(video_id=video.id).order_by(Comment.created_at.desc()).all()
+    comments = Comment.query.filter_by(video_id=video.id) \
+        .order_by(Comment.created_at.desc()).all()
 
-    # Текущая реакция пользователя
+    # Реакция пользователя
     user_reaction = None
     if g.user:
         reaction = Reaction.query.filter_by(user_id=g.user.id, video_id=video.id).first()
@@ -106,15 +106,32 @@ def watch(video_id):
         'bad': Reaction.query.filter_by(video_id=video.id, reaction_type='bad').count()
     }
 
+    # Похожие видео (по mood или популярные)
+    related = Video.query.filter(
+        Video.id != video.id,
+        Video.mood == video.mood
+    ).order_by(Video.views.desc()).limit(8).all()
+
+    if len(related) < 4:
+        more = Video.query.filter(
+            Video.id != video.id
+        ).order_by(Video.karma.desc()).limit(8).all()
+
+        seen_ids = {v.id for v in related}
+        for v in more:
+            if v.id not in seen_ids:
+                related.append(v)
+            if len(related) >= 8:
+                break
+
     return render_template('video/watch.html',
                            video=video,
                            form=form,
                            comments=comments,
                            user_reaction=user_reaction,
-                           reactions_count=reactions_count
+                           reactions_count=reactions_count,
+                           related_videos=related
                            )
-
-
 # ============ РЕАКЦИЯ НА ВИДЕО ============
 
 @video_bp.route('/video/<int:video_id>/react/<reaction_type>', methods=['POST'])
