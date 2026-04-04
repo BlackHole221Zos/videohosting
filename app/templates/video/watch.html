@@ -48,42 +48,67 @@
                     </div>
                 </a>
 
-                {% if user and user.id != video.author.id %}
-                    {% if user.is_following(video.author) %}
-                    <form action="{{ url_for('user.unfollow', username=video.author.username) }}" method="POST">
-                        <button type="submit" class="subscribe-btn subscribed btn-sm">
-                            <span class="btn-text-default">✓ Подписан</span>
-                            <span class="btn-text-hover">Отписаться</span>
-                        </button>
-                    </form>
-                    {% else %}
-                    <form action="{{ url_for('user.follow', username=video.author.username) }}" method="POST">
-                        <button type="submit" class="subscribe-btn not-subscribed btn-sm">+ Подписаться</button>
-                    </form>
-                    {% endif %}
-                {% endif %}
+ {% if user and user.id != video.author.id %}
+    {% if user.is_following(video.author) %}
+    <button
+        type="button"
+        class="subscribe-btn subscribed btn-sm subscribe-ajax-btn"
+        data-url="{{ url_for('user.unfollow', username=video.author.username) }}"
+        data-username="{{ video.author.username }}"
+    >
+        <span class="btn-text-default">✓ Подписан</span>
+        <span class="btn-text-hover">Отписаться</span>
+    </button>
+    {% else %}
+    <button
+        type="button"
+        class="subscribe-btn not-subscribed btn-sm subscribe-ajax-btn"
+        data-url="{{ url_for('user.follow', username=video.author.username) }}"
+        data-username="{{ video.author.username }}"
+    >
+        + Подписаться
+    </button>
+    {% endif %}
+{% endif %}
             </div>
 
-            <!-- Реакции -->
+            <!-- Реакции (AJAX) -->
             <div class="watch-reactions">
+                {% if user %}
                 <div class="reaction-pill">
-                    <form action="{{ url_for('video.react', video_id=video.id, reaction_type='fire') }}" method="POST">
-                        <button type="submit" class="pill-btn {% if user_reaction == 'fire' %}active{% endif %}">
-                            🔥 {{ reactions_count.fire }}
-                        </button>
-                    </form>
-                    <form action="{{ url_for('video.react', video_id=video.id, reaction_type='good') }}" method="POST">
-                        <button type="submit" class="pill-btn {% if user_reaction == 'good' %}active{% endif %}">
-                            👍 {{ reactions_count.good }}
-                        </button>
-                    </form>
-                    <form action="{{ url_for('video.react', video_id=video.id, reaction_type='bad') }}" method="POST">
-                        <button type="submit" class="pill-btn {% if user_reaction == 'bad' %}active{% endif %}">
-                            👎 {{ reactions_count.bad }}
-                        </button>
-                    </form>
+                    <button
+                        type="button"
+                        class="pill-btn reaction-ajax-btn {% if user_reaction == 'fire' %}active{% endif %}"
+                        data-url="{{ url_for('video.react', video_id=video.id, reaction_type='fire') }}"
+                        data-reaction="fire"
+                    >
+                        🔥 <span id="fire-count">{{ reactions_count.fire }}</span>
+                    </button>
+                    <button
+                        type="button"
+                        class="pill-btn reaction-ajax-btn {% if user_reaction == 'good' %}active{% endif %}"
+                        data-url="{{ url_for('video.react', video_id=video.id, reaction_type='good') }}"
+                        data-reaction="good"
+                    >
+                        👍 <span id="good-count">{{ reactions_count.good }}</span>
+                    </button>
+                    <button
+                        type="button"
+                        class="pill-btn reaction-ajax-btn {% if user_reaction == 'bad' %}active{% endif %}"
+                        data-url="{{ url_for('video.react', video_id=video.id, reaction_type='bad') }}"
+                        data-reaction="bad"
+                    >
+                        👎 <span id="bad-count">{{ reactions_count.bad }}</span>
+                    </button>
                 </div>
-                <span class="karma-pill">Карма: <strong>{{ video.karma }}</strong></span>
+                {% else %}
+                <div class="reaction-pill">
+                    <a href="{{ url_for('auth.login') }}" class="pill-btn">🔥 {{ reactions_count.fire }}</a>
+                    <a href="{{ url_for('auth.login') }}" class="pill-btn">👍 {{ reactions_count.good }}</a>
+                    <a href="{{ url_for('auth.login') }}" class="pill-btn">👎 {{ reactions_count.bad }}</a>
+                </div>
+                {% endif %}
+                <span class="karma-pill">Карма: <strong id="karma-total">{{ video.karma }}</strong></span>
             </div>
         </div>
 
@@ -113,31 +138,33 @@
 
         <!-- Комментарии -->
         <div class="watch-comments">
-            <h3>💬 Комментарии ({{ comments|length }})</h3>
+            <h3>💬 Комментарии (<span id="comments-count">{{ comments|length }}</span>)</h3>
 
             {% if user %}
-            <form method="POST" class="comment-write">
-                {{ form.hidden_tag() }}
+            <form id="comment-form" data-url="{{ url_for('video.add_comment', video_id=video.id) }}" class="comment-write">
                 <img
                     src="{{ url_for('static', filename='uploads/avatars/' + user.avatar) }}"
                     class="comment-my-avatar"
                     onerror="this.src='{{ url_for('static', filename='img/default_avatar.svg') }}'"
                 >
                 <div class="comment-write-body">
-                    {{ form.text(class="form-input", placeholder="Написать комментарий...", rows=2) }}
-                    {% if form.text.errors %}
-                    <span class="form-error">{{ form.text.errors[0] }}</span>
-                    {% endif %}
-                    <button type="submit" class="btn btn-primary btn-sm">Отправить</button>
+                    <textarea
+                        class="form-input"
+                        placeholder="Написать комментарий..."
+                        rows="2"
+                        required
+                        maxlength="1000"
+                    ></textarea>
+                    <button type="submit" class="btn btn-primary btn-sm">💬 Отправить</button>
                 </div>
             </form>
             {% else %}
             <p class="comment-login"><a href="{{ url_for('auth.login') }}">Войдите</a>, чтобы комментировать</p>
             {% endif %}
 
-            <div class="comment-list">
+            <div class="comment-list" id="comments-list">
                 {% for comment in comments %}
-                <div class="comment-item">
+                <div class="comment-item" data-id="{{ comment.id }}">
                     <a href="{{ url_for('user.profile', username=comment.author.username) }}">
                         <img
                             src="{{ url_for('static', filename='uploads/avatars/' + comment.author.avatar) }}"
@@ -148,7 +175,7 @@
                     <div class="comment-body">
                         <div class="comment-head">
                             <a href="{{ url_for('user.profile', username=comment.author.username) }}" class="comment-author">
-                                @{{ comment.author.username }}
+                                {{ comment.author.username }}
                             </a>
                             <span class="comment-date">{{ comment.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
                         </div>

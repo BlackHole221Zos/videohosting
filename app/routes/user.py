@@ -1,12 +1,13 @@
 # app/routes/user.py
 
-from flask import Blueprint, render_template, redirect, url_for, flash, g, request, abort
+from flask import Blueprint, render_template, redirect, url_for, flash, g, request, abort, jsonify
 from app.extensions import db
 from app.models import User, Video, WatchHistory
 from app.forms import ProfileEditForm
 from app.utils.decorators import login_required
 from app.utils.helpers import save_avatar
 from datetime import datetime, timedelta
+
 
 user_bp = Blueprint('user', __name__)
 
@@ -67,7 +68,7 @@ def edit(username):
     return render_template('user/edit.html', form=form, profile_user=user)
 
 
-# ============ ПОДПИСАТЬСЯ ============
+# ============ ПОДПИСАТЬСЯ (AJAX) ============
 
 @user_bp.route('/user/<username>/follow', methods=['POST'])
 @login_required
@@ -76,16 +77,27 @@ def follow(username):
     user = User.query.filter_by(username=username).first_or_404()
 
     if user.id == g.user.id:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'error': 'Нельзя подписаться на себя'}), 400
         flash('Нельзя подписаться на себя', 'warning')
         return redirect(url_for('user.profile', username=username))
 
     g.user.follow(user)
     db.session.commit()
+
+    # AJAX запрос
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'success': True,
+            'is_following': True,
+            'followers_count': user.followers_count()
+        })
+
     flash(f'Вы подписались на {user.username}!', 'success')
     return redirect(request.referrer or url_for('user.profile', username=username))
 
 
-# ============ ОТПИСАТЬСЯ ============
+# ============ ОТПИСАТЬСЯ (AJAX) ============
 
 @user_bp.route('/user/<username>/unfollow', methods=['POST'])
 @login_required
@@ -95,9 +107,17 @@ def unfollow(username):
 
     g.user.unfollow(user)
     db.session.commit()
+
+    # AJAX запрос
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'success': True,
+            'is_following': False,
+            'followers_count': user.followers_count()
+        })
+
     flash(f'Вы отписались от {user.username}', 'info')
     return redirect(request.referrer or url_for('user.profile', username=username))
-
 
 # ============ ПОДПИСКИ (КАНАЛЫ С ВИДЕО) ============
 

@@ -47,24 +47,32 @@
             </div>
 
            <div class="profile-actions">
-    {% if user and user.id == profile_user.id %}
-        <a href="{{ url_for('user.edit', username=profile_user.username) }}" class="btn btn-outline">
-            ⚙️ Редактировать
-        </a>
-    {% elif user %}
-        {% if is_following %}
-            <form action="{{ url_for('user.unfollow', username=profile_user.username) }}" method="POST">
-                <button type="submit" class="subscribe-btn subscribed">
-                    <span class="btn-text-default">✓ Подписан</span>
-                    <span class="btn-text-hover">Отписаться</span>
-                </button>
-            </form>
-        {% else %}
-            <form action="{{ url_for('user.follow', username=profile_user.username) }}" method="POST">
-                <button type="submit" class="subscribe-btn not-subscribed">+ Подписаться</button>
-            </form>
-        {% endif %}
+{% if user and user.id == profile_user.id %}
+    <a href="{{ url_for('user.edit', username=profile_user.username) }}" class="btn btn-outline">
+        ⚙️ Редактировать
+    </a>
+{% elif user %}
+    {% if is_following %}
+    <button
+        type="button"
+        class="subscribe-btn subscribed subscribe-ajax-btn"
+        data-url="{{ url_for('user.unfollow', username=profile_user.username) }}"
+        data-username="{{ profile_user.username }}"
+    >
+        <span class="btn-text-default">✓ Подписан</span>
+        <span class="btn-text-hover">Отписаться</span>
+    </button>
+    {% else %}
+    <button
+        type="button"
+        class="subscribe-btn not-subscribed subscribe-ajax-btn"
+        data-url="{{ url_for('user.follow', username=profile_user.username) }}"
+        data-username="{{ profile_user.username }}"
+    >
+        + Подписаться
+    </button>
     {% endif %}
+{% endif %}
 </div>
         </div>
     </div>

@@ -2377,3 +2377,67 @@ ul, ol {
         justify-content: center;
     }
 }
+
+/* ============================================
+   TOAST УВЕДОМЛЕНИЯ
+============================================ */
+
+.toast {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    padding: 14px 24px;
+    border-radius: 10px;
+    font-weight: 500;
+    z-index: 10000;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast-success {
+    background: var(--success);
+    color: #fff;
+}
+
+.toast-danger {
+    background: var(--danger);
+    color: #fff;
+}
+
+.toast-info {
+    background: var(--primary);
+    color: #000;
+}
+
+.toast-warning {
+    background: var(--warning);
+    color: #000;
+}
+
+/* Анимация для новых комментариев */
+@keyframes fadeSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Анимация кнопки реакции */
+.reaction-ajax-btn {
+    transition: all 0.2s ease;
+}
+
+.reaction-ajax-btn:active {
+    transform: scale(0.95);
+}

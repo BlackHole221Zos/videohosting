@@ -15,6 +15,9 @@ document.addEventListener('DOMContentLoaded', function() {
     initAccordion();
     initConfirmations();
     initSubscriptionsCarousel();
+    initReactions();
+    initCommentForm();
+    initSubscribeButtons();
 });
 
 
@@ -26,12 +29,10 @@ function initThemeToggle() {
     const toggle = document.getElementById('themeToggle');
     if (!toggle) return;
 
-    // Загружаем сохранённую тему
     const savedTheme = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
     updateThemeIcon(savedTheme);
 
-    // Обработчик клика
     toggle.addEventListener('click', function() {
         const currentTheme = document.documentElement.getAttribute('data-theme');
         const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
@@ -67,7 +68,6 @@ function initHeroCarousel() {
     let currentIndex = 0;
     let interval;
 
-    // Функция переключения слайда
     function goToSlide(index) {
         slides.forEach(slide => slide.classList.remove('active'));
         dots.forEach(dot => dot.classList.remove('active'));
@@ -253,7 +253,6 @@ function initAccordion() {
 // ============================================
 
 function initConfirmations() {
-    // Очистка истории
     const clearForm = document.querySelector('.clear-history-form');
     if (clearForm) {
         clearForm.addEventListener('submit', function(e) {
@@ -263,7 +262,6 @@ function initConfirmations() {
         });
     }
 
-    // Удаление видео
     const deleteForm = document.querySelector('.delete-video-form');
     if (deleteForm) {
         deleteForm.addEventListener('submit', function(e) {
@@ -289,11 +287,9 @@ function initSubscriptionsCarousel() {
         bubble.addEventListener('click', function() {
             const channelId = this.dataset.channelId;
 
-            // Убираем активный класс со всех
             bubbles.forEach(b => b.classList.remove('active'));
             videoBlocks.forEach(v => v.classList.remove('active'));
 
-            // Активируем выбранный
             this.classList.add('active');
 
             const targetVideos = document.querySelector(`.channel-videos[data-channel-id="${channelId}"]`);
@@ -306,31 +302,267 @@ function initSubscriptionsCarousel() {
 
 
 // ============================================
+//   AJAX РЕАКЦИИ
+// ============================================
+
+function initReactions() {
+    const reactionBtns = document.querySelectorAll('.reaction-ajax-btn');
+
+    reactionBtns.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            const url = this.dataset.url;
+            const btn = this;
+
+            // Добавляем анимацию
+            btn.style.transform = 'scale(1.2)';
+            setTimeout(() => btn.style.transform = '', 150);
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateReactionUI(data);
+                }
+            })
+            .catch(err => console.error('Ошибка:', err));
+        });
+    });
+}
+
+function updateReactionUI(data) {
+    // Обновляем активную кнопку
+    document.querySelectorAll('.reaction-ajax-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.reaction === data.user_reaction) {
+            btn.classList.add('active');
+        }
+    });
+
+    // Обновляем счётчики
+    const fireCount = document.getElementById('fire-count');
+    const goodCount = document.getElementById('good-count');
+    const badCount = document.getElementById('bad-count');
+    const karmaTotal = document.getElementById('karma-total');
+
+    if (fireCount) fireCount.textContent = data.reactions.fire;
+    if (goodCount) goodCount.textContent = data.reactions.good;
+    if (badCount) badCount.textContent = data.reactions.bad;
+    if (karmaTotal) karmaTotal.textContent = data.karma;
+}
+
+
+// ============================================
+//   AJAX КОММЕНТАРИИ
+// ============================================
+
+function initCommentForm() {
+    const form = document.getElementById('comment-form');
+    if (!form) return;
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const textarea = form.querySelector('textarea');
+        const text = textarea.value.trim();
+        const url = form.dataset.url;
+
+        if (!text) return;
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = '⏳ Отправка...';
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ text: text })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                addCommentToList(data.comment);
+                textarea.value = '';
+                updateCommentCount(1);
+                showToast('Комментарий добавлен!', 'success');
+            } else {
+                showToast(data.error || 'Ошибка', 'danger');
+            }
+        })
+        .catch(err => {
+            console.error('Ошибка:', err);
+            showToast('Ошибка отправки', 'danger');
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        });
+    });
+}
+
+function addCommentToList(comment) {
+    const list = document.getElementById('comments-list');
+    if (!list) return;
+
+    const emptyMsg = list.querySelector('.empty');
+    if (emptyMsg) emptyMsg.remove();
+
+    const html = `
+        <div class="comment-item" data-id="${comment.id}" style="animation: fadeSlideIn 0.3s ease;">
+            <a href="/user/${comment.author.username}">
+                <img
+                    src="/static/uploads/avatars/${comment.author.avatar}"
+                    class="comment-avatar"
+                    onerror="this.src='/static/img/default_avatar.svg'"
+                >
+            </a>
+            <div class="comment-body">
+                <div class="comment-head">
+                    <a href="/user/${comment.author.username}" class="comment-author">
+                        ${comment.author.username}
+                    </a>
+                    <span class="comment-date">${comment.created_at}</span>
+                </div>
+                <p class="comment-text">${escapeHtml(comment.text)}</p>
+            </div>
+        </div>
+    `;
+
+    list.insertAdjacentHTML('afterbegin', html);
+}
+
+function updateCommentCount(delta) {
+    const counter = document.getElementById('comments-count');
+    if (counter) {
+        const current = parseInt(counter.textContent) || 0;
+        counter.textContent = current + delta;
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+
+// ============================================
+//   TOAST УВЕДОМЛЕНИЯ
+// ============================================
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+
+    document.body.appendChild(toast);
+
+    // Показываем
+    setTimeout(() => toast.classList.add('show'), 10);
+
+    // Скрываем через 3 сек
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+
+// ============================================
 //   ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 // ============================================
 
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(() => {
-        showToast('Ссылка скопирована!');
+        showToast('Ссылка скопирована!', 'success');
     }).catch(err => {
         console.error('Ошибка копирования:', err);
     });
 }
 
-function showToast(message, type = 'info') {
-    const toast = document.createElement('div');
-    toast.className = `alert alert-${type}`;
-    toast.style.position = 'fixed';
-    toast.style.bottom = '20px';
-    toast.style.right = '20px';
-    toast.style.zIndex = '9999';
-    toast.style.animation = 'fadeIn 0.3s ease';
-    toast.textContent = message;
+// ============================================
+//   AJAX ПОДПИСКИ
+// ============================================
 
-    document.body.appendChild(toast);
+function initSubscribeButtons() {
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.subscribe-ajax-btn');
+        if (!btn) return;
 
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
+        e.preventDefault();
+
+        const url = btn.dataset.url;
+        const username = btn.dataset.username;
+
+        // Анимация
+        btn.style.transform = 'scale(0.95)';
+        btn.disabled = true;
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateSubscribeUI(btn, data, username);
+
+                // Toast уведомление
+                if (data.is_following) {
+                    showToast(`Вы подписались на ${username}!`, 'success');
+                } else {
+                    showToast(`Вы отписались от ${username}`, 'info');
+                }
+            }
+        })
+        .catch(err => {
+            console.error('Ошибка:', err);
+            showToast('Ошибка подписки', 'danger');
+        })
+        .finally(() => {
+            btn.style.transform = '';
+            btn.disabled = false;
+        });
+    });
+}
+
+function updateSubscribeUI(btn, data, username) {
+    const isFollowing = data.is_following;
+    const followersCount = data.followers_count;
+
+    // Обновляем кнопку
+    if (isFollowing) {
+        btn.classList.remove('not-subscribed');
+        btn.classList.add('subscribed');
+        btn.dataset.url = `/user/${username}/unfollow`;
+        btn.innerHTML = `
+            <span class="btn-text-default">✓ Подписан</span>
+            <span class="btn-text-hover">Отписаться</span>
+        `;
+    } else {
+        btn.classList.remove('subscribed');
+        btn.classList.add('not-subscribed');
+        btn.dataset.url = `/user/${username}/follow`;
+        btn.innerHTML = '+ Подписаться';
+    }
+
+    // Обновляем счётчик подписчиков на странице (если есть)
+    const subsCounter = document.querySelector('.watch-author-subs, .profile-subs-count');
+    if (subsCounter && subsCounter.dataset.username === username) {
+        subsCounter.textContent = `${followersCount} подписчиков`;
+    }
 }
