@@ -557,15 +557,69 @@ ul, ol {
 }
 
 /* ============================================
-   ФУТЕР
+   ФУТЕР (ЗАКРЕПЛЁННЫЙ)
 ============================================ */
 
 .footer {
     background: var(--bg-secondary);
     border-top: 1px solid var(--border);
-    padding: 20px 0;
-    text-align: center;
+    padding: 12px 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+}
+
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.footer-content p {
+    margin: 0;
+    font-size: 0.85rem;
     color: var(--text-muted);
+}
+
+.footer-links {
+    display: flex;
+    gap: 20px;
+}
+
+.footer-links a {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    transition: color 0.3s ease;
+}
+
+.footer-links a:hover {
+    color: var(--primary);
+}
+
+/* Отступ внизу контента, чтобы футер не перекрывал */
+.main {
+    flex: 1;
+    padding: 30px 0 80px 0; /* добавили padding-bottom */
+}
+
+@media (max-width: 768px) {
+    .footer-content {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .footer-links {
+        gap: 12px;
+    }
+
+    .main {
+        padding-bottom: 100px; /* больше отступ для мобильных */
+    }
 }
 
 /* ============================================

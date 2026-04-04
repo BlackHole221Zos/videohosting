@@ -96,6 +96,8 @@ def mood(mood_name):
                            )
 
 
+
+
 @main_bp.route('/terms')
 def terms():
     """Пользовательское соглашение"""
