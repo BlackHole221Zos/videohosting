@@ -5,7 +5,7 @@ from app.extensions import db
 from app.models import Video, Comment, Reaction, WatchHistory
 from app.forms import VideoUploadForm, CommentForm
 from app.utils.decorators import login_required
-from app.utils.helpers import save_video, generate_thumbnail
+from app.utils.helpers import save_video, generate_thumbnail, delete_file, save_thumbnail
 
 video_bp = Blueprint('video', __name__)
 
@@ -20,20 +20,27 @@ def upload():
     form = VideoUploadForm()
 
     if form.validate_on_submit():
+        # Сохраняем видео файл
         video_filename = save_video(form.video.data)
 
         if not video_filename:
             flash('Ошибка загрузки видео', 'danger')
             return render_template('video/upload.html', form=form)
 
-        thumbnail_filename = generate_thumbnail(video_filename)
+        # Превью: своё или автогенерация
+        if form.thumbnail.data:
+            thumbnail_filename = save_thumbnail(form.thumbnail.data)
+        else:
+            thumbnail_filename = generate_thumbnail(video_filename)
 
+        # Создаём запись в БД
         video = Video(
             title=form.title.data,
             description=form.description.data or '',
             filename=video_filename,
             thumbnail=thumbnail_filename,
             mood=form.mood.data,
+            visibility=form.visibility.data,
             tags=form.tags.data or '',
             user_id=g.user.id
         )

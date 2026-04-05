@@ -9,7 +9,7 @@ search_bp = Blueprint('search', __name__)
 
 @search_bp.route('/search')
 def search():
-    """Поиск видео"""
+    """Поиск видео (только публичные)"""
 
     query = request.args.get('q', '').strip()
     mood_filter = request.args.get('mood', '')
@@ -22,11 +22,10 @@ def search():
                                query='',
                                mood_filter='',
                                sort_by=sort_by,
-                               total=0
-                               )
+                               total=0)
 
-    # Базовый запрос
-    videos_query = Video.query
+    # Базовый запрос — только публичные видео
+    videos_query = Video.query.filter_by(visibility='public')
 
     # Поиск по тексту
     if query:
@@ -58,5 +57,4 @@ def search():
                            query=query,
                            mood_filter=mood_filter,
                            sort_by=sort_by,
-                           total=len(videos)
-                           )
+                           total=len(videos))

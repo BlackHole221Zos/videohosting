@@ -18,6 +18,8 @@ document.addEventListener('DOMContentLoaded', function() {
     initReactions();
     initCommentForm();
     initSubscribeButtons();
+    initThumbnailChoice();
+    initCopyLink();
 });
 
 
@@ -315,7 +317,6 @@ function initReactions() {
             const url = this.dataset.url;
             const btn = this;
 
-            // Добавляем анимацию
             btn.style.transform = 'scale(1.2)';
             setTimeout(() => btn.style.transform = '', 150);
 
@@ -338,7 +339,6 @@ function initReactions() {
 }
 
 function updateReactionUI(data) {
-    // Обновляем активную кнопку
     document.querySelectorAll('.reaction-ajax-btn').forEach(btn => {
         btn.classList.remove('active');
         if (btn.dataset.reaction === data.user_reaction) {
@@ -346,7 +346,6 @@ function updateReactionUI(data) {
         }
     });
 
-    // Обновляем счётчики
     const fireCount = document.getElementById('fire-count');
     const goodCount = document.getElementById('good-count');
     const badCount = document.getElementById('bad-count');
@@ -458,40 +457,6 @@ function escapeHtml(text) {
 
 
 // ============================================
-//   TOAST УВЕДОМЛЕНИЯ
-// ============================================
-
-function showToast(message, type = 'info') {
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.textContent = message;
-
-    document.body.appendChild(toast);
-
-    // Показываем
-    setTimeout(() => toast.classList.add('show'), 10);
-
-    // Скрываем через 3 сек
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
-
-
-// ============================================
-//   ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-// ============================================
-
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(() => {
-        showToast('Ссылка скопирована!', 'success');
-    }).catch(err => {
-        console.error('Ошибка копирования:', err);
-    });
-}
-
-// ============================================
 //   AJAX ПОДПИСКИ
 // ============================================
 
@@ -505,7 +470,6 @@ function initSubscribeButtons() {
         const url = btn.dataset.url;
         const username = btn.dataset.username;
 
-        // Анимация
         btn.style.transform = 'scale(0.95)';
         btn.disabled = true;
 
@@ -521,7 +485,6 @@ function initSubscribeButtons() {
             if (data.success) {
                 updateSubscribeUI(btn, data, username);
 
-                // Toast уведомление
                 if (data.is_following) {
                     showToast(`Вы подписались на ${username}!`, 'success');
                 } else {
@@ -544,7 +507,6 @@ function updateSubscribeUI(btn, data, username) {
     const isFollowing = data.is_following;
     const followersCount = data.followers_count;
 
-    // Обновляем кнопку
     if (isFollowing) {
         btn.classList.remove('not-subscribed');
         btn.classList.add('subscribed');
@@ -560,9 +522,136 @@ function updateSubscribeUI(btn, data, username) {
         btn.innerHTML = '+ Подписаться';
     }
 
-    // Обновляем счётчик подписчиков на странице (если есть)
     const subsCounter = document.querySelector('.watch-author-subs, .profile-subs-count');
     if (subsCounter && subsCounter.dataset.username === username) {
         subsCounter.textContent = `${followersCount} подписчиков`;
     }
+}
+
+
+// ============================================
+//   ВЫБОР ОБЛОЖКИ
+// ============================================
+
+function initThumbnailChoice() {
+    const radioCards = document.querySelectorAll('.radio-card');
+    const customUpload = document.getElementById('customThumbUpload');
+    const thumbInput = document.getElementById('thumbInput');
+    const thumbPreview = document.getElementById('thumbPreview');
+    const thumbPreviewImg = document.getElementById('thumbPreviewImg');
+    const thumbFileName = document.getElementById('thumbFileName');
+
+    if (radioCards.length === 0) return;
+
+    radioCards.forEach(card => {
+        card.addEventListener('click', function() {
+            radioCards.forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+
+            const target = this.dataset.target;
+
+            if (target === 'custom' && customUpload) {
+                customUpload.style.display = 'block';
+            } else if (customUpload) {
+                customUpload.style.display = 'none';
+                if (thumbInput) thumbInput.value = '';
+                if (thumbPreview) thumbPreview.style.display = 'none';
+                if (thumbFileName) thumbFileName.textContent = 'Выберите изображение';
+            }
+        });
+    });
+
+    if (thumbInput) {
+        thumbInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const file = this.files[0];
+                if (thumbFileName) thumbFileName.textContent = file.name;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    if (thumbPreviewImg) thumbPreviewImg.src = e.target.result;
+                    if (thumbPreview) thumbPreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+}
+
+
+// ============================================
+//   КОПИРОВАНИЕ ССЫЛКИ НА ВИДЕО
+// ============================================
+
+function initCopyLink() {
+    const copyBtns = document.querySelectorAll('.copy-link-btn');
+
+    copyBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const url = this.dataset.url;
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(() => {
+                    showCopySuccess(btn);
+                }).catch(err => {
+                    fallbackCopy(url, btn);
+                });
+            } else {
+                fallbackCopy(url, btn);
+            }
+        });
+    });
+}
+
+function showCopySuccess(btn) {
+    const originalText = btn.textContent;
+    btn.textContent = '✅ Скопировано!';
+    btn.style.borderColor = 'var(--success)';
+    btn.style.color = 'var(--success)';
+
+    showToast('Ссылка скопирована!', 'success');
+
+    setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.borderColor = '';
+        btn.style.color = '';
+    }, 2000);
+}
+
+function fallbackCopy(text, btn) {
+    const input = document.createElement('input');
+    input.value = text;
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
+    document.body.appendChild(input);
+    input.select();
+
+    try {
+        document.execCommand('copy');
+        showCopySuccess(btn);
+    } catch (err) {
+        showToast('Не удалось скопировать', 'danger');
+    }
+
+    document.body.removeChild(input);
+}
+
+
+// ============================================
+//   TOAST УВЕДОМЛЕНИЯ
+// ============================================
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => toast.classList.add('show'), 10);
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }

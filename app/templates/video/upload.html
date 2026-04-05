@@ -1,68 +1,116 @@
-    <!-- app/templates/video/upload.html -->
-    {% extends "base.html" %}
+<!-- app/templates/video/upload.html -->
+{% extends "base.html" %}
 
-    {% block title %}Загрузить видео — VidSphere{% endblock %}
+{% block title %}Загрузить видео — VidSphere{% endblock %}
 
-    {% block content %}
-    <div class="upload-page">
-        <div class="upload-card">
-            <h1>📤 Загрузить видео</h1>
+{% block content %}
+<div class="upload-page">
+    <div class="upload-card">
+        <h1>📤 Загрузить видео</h1>
 
-            <form method="POST" enctype="multipart/form-data" class="upload-form">
-                {{ form.hidden_tag() }}
+        <form method="POST" enctype="multipart/form-data" class="upload-form">
+            {{ form.hidden_tag() }}
 
-                <div class="form-group">
-                    <label for="title">Название *</label>
-                    {{ form.title(class="form-input", placeholder="Название вашего видео") }}
-                    {% if form.title.errors %}
-                        <span class="form-error">{{ form.title.errors[0] }}</span>
-                    {% endif %}
+            <div class="form-group">
+                <label for="title">Название *</label>
+                {{ form.title(class="form-input", placeholder="Название вашего видео") }}
+                {% if form.title.errors %}
+                    <span class="form-error">{{ form.title.errors[0] }}</span>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="description">Описание</label>
+                {{ form.description(class="form-input form-textarea", rows=4, placeholder="О чём это видео?") }}
+                {% if form.description.errors %}
+                    <span class="form-error">{{ form.description.errors[0] }}</span>
+                {% endif %}
+            </div>
+
+            <!-- Видео файл -->
+            <div class="form-group">
+                <label>Видео файл *</label>
+                <div class="file-upload">
+                    {{ form.video(class="file-input", id="videoInput", accept="video/*") }}
+                    <label for="videoInput" class="file-label">
+                        <span class="file-icon">🎬</span>
+                        <span class="file-text">Выберите видео или перетащите сюда</span>
+                        <span class="file-hint">MP4, AVI, MOV, MKV, WebM (до 100 MB)</span>
+                    </label>
+                </div>
+                {% if form.video.errors %}
+                    <span class="form-error">{{ form.video.errors[0] }}</span>
+                {% endif %}
+            </div>
+
+            <!-- Обложка -->
+            <div class="form-group">
+                <label>Обложка видео</label>
+                <div class="thumbnail-choice">
+                    <label class="radio-card active" data-target="auto">
+                        <input type="radio" name="thumb_mode" value="auto" checked>
+                        <div class="radio-card-body">
+                            <span class="radio-icon">🤖</span>
+                            <span class="radio-title">Автоматически</span>
+                            <span class="radio-desc">Первый кадр видео</span>
+                        </div>
+                    </label>
+                    <label class="radio-card" data-target="custom">
+                        <input type="radio" name="thumb_mode" value="custom">
+                        <div class="radio-card-body">
+                            <span class="radio-icon">🖼️</span>
+                            <span class="radio-title">Своя обложка</span>
+                            <span class="radio-desc">JPG, PNG, WebP</span>
+                        </div>
+                    </label>
                 </div>
 
-                <div class="form-group">
-                    <label for="description">Описание</label>
-                    {{ form.description(class="form-input form-textarea", rows=4, placeholder="О чём это видео?") }}
-                    {% if form.description.errors %}
-                        <span class="form-error">{{ form.description.errors[0] }}</span>
-                    {% endif %}
-                </div>
-
-                <div class="form-group">
-                    <label for="video">Видео файл *</label>
+                <div class="custom-thumb-upload" id="customThumbUpload" style="display: none;">
                     <div class="file-upload">
-                        {{ form.video(class="file-input", id="videoInput", accept="video/*") }}
-                        <label for="videoInput" class="file-label">
-                            <span class="file-icon">🎬</span>
-                            <span class="file-text">Выберите видео или перетащите сюда</span>
-                            <span class="file-hint">MP4, AVI, MOV, MKV, WebM (до 100 MB)</span>
+                        {{ form.thumbnail(class="file-input", id="thumbInput", accept="image/*") }}
+                        <label for="thumbInput" class="file-label file-label-sm">
+                            <span class="file-icon">🖼️</span>
+                            <span class="file-text" id="thumbFileName">Выберите изображение</span>
                         </label>
                     </div>
-                    {% if form.video.errors %}
-                        <span class="form-error">{{ form.video.errors[0] }}</span>
+                    <div class="thumb-preview" id="thumbPreview" style="display: none;">
+                        <img id="thumbPreviewImg" src="" alt="Превью">
+                    </div>
+                </div>
+                {% if form.thumbnail.errors %}
+                    <span class="form-error">{{ form.thumbnail.errors[0] }}</span>
+                {% endif %}
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="mood">Настроение *</label>
+                    {{ form.mood(class="form-input form-select") }}
+                    {% if form.mood.errors %}
+                        <span class="form-error">{{ form.mood.errors[0] }}</span>
                     {% endif %}
                 </div>
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="mood">Настроение *</label>
-                        {{ form.mood(class="form-input form-select") }}
-                        {% if form.mood.errors %}
-                            <span class="form-error">{{ form.mood.errors[0] }}</span>
-                        {% endif %}
-                    </div>
-
-                    <div class="form-group">
-                        <label for="tags">Теги</label>
-                        {{ form.tags(class="form-input", placeholder="игры, музыка, влог") }}
-                        <small class="form-hint">Через запятую</small>
-                        {% if form.tags.errors %}
-                            <span class="form-error">{{ form.tags.errors[0] }}</span>
-                        {% endif %}
-                    </div>
+                <div class="form-group">
+                    <label for="visibility">Доступ *</label>
+                    {{ form.visibility(class="form-input form-select") }}
+                    {% if form.visibility.errors %}
+                        <span class="form-error">{{ form.visibility.errors[0] }}</span>
+                    {% endif %}
                 </div>
+            </div>
 
-                <button type="submit" class="btn btn-primary btn-block">🚀 Загрузить</button>
-            </form>
-        </div>
+            <div class="form-group">
+                <label for="tags">Теги</label>
+                {{ form.tags(class="form-input", placeholder="игры, музыка, влог") }}
+                <small class="form-hint">Через запятую</small>
+                {% if form.tags.errors %}
+                    <span class="form-error">{{ form.tags.errors[0] }}</span>
+                {% endif %}
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">🚀 Загрузить</button>
+        </form>
     </div>
-    {% endblock %}
+</div>
+{% endblock %}

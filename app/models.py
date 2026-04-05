@@ -135,6 +135,9 @@ class Video(db.Model):
     # Теги (через запятую)
     tags = db.Column(db.String(500), default='')
 
+    # Доступ: public = все видят, unlisted = только по ссылке
+    visibility = db.Column(db.String(20), default='public')
+
     # Статистика
     views = db.Column(db.Integer, default=0)
     karma = db.Column(db.Integer, default=0)

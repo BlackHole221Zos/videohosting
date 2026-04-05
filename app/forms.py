@@ -101,6 +101,10 @@ class VideoUploadForm(FlaskForm):
         FileAllowed(['mp4', 'avi', 'mov', 'mkv', 'webm'], 'Только видео файлы!')
     ])
 
+    thumbnail = FileField('Обложка', validators=[
+        FileAllowed(['jpg', 'jpeg', 'png', 'webp'], 'Только изображения!')
+    ])
+
     mood = SelectField('Настроение', choices=[
         ('inspiration', '✨ Вдохновение'),
         ('laugh', '😂 Смех'),
@@ -111,10 +115,16 @@ class VideoUploadForm(FlaskForm):
         DataRequired(message='Выберите настроение')
     ])
 
+    visibility = SelectField('Доступ', choices=[
+        ('public', '🌍 Публичное — видно всем'),
+        ('unlisted', '🔗 По ссылке — только у кого есть ссылка')
+    ], validators=[
+        DataRequired()
+    ])
+
     tags = StringField('Теги', validators=[
         Length(max=500, message='Максимум 500 символов')
     ])
-
 
 # ============ ФОРМА КОММЕНТАРИЯ ============
 

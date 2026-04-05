@@ -113,28 +113,47 @@
         </div>
 
         <!-- Описание -->
-        <div class="watch-desc">
-            <div class="watch-desc-stats">
-                {{ video.views }} просмотров • {{ video.created_at.strftime('%d.%m.%Y') }}
-                <span class="mood-tag">{{ video.mood_emoji() }} {{ video.mood_name() }}</span>
-            </div>
-            {% if video.description %}
-            <p>{{ video.description }}</p>
-            {% endif %}
-            {% if video.tags %}
-            <div class="video-tags">
-                {% for tag in video.get_tags_list() %}
-                <a href="{{ url_for('search.search', q=tag) }}" class="tag">#{{ tag }}</a>
-                {% endfor %}
-            </div>
-            {% endif %}
+        <!-- Описание -->
+<div class="watch-desc">
+    <div class="watch-desc-stats">
+        {{ video.views }} просмотров • {{ video.created_at.strftime('%d.%m.%Y') }}
+        <span class="mood-tag">{{ video.mood_emoji() }} {{ video.mood_name() }}</span>
 
-            {% if user and (user.id == video.author.id or user.is_admin()) %}
-            <form action="{{ url_for('video.delete', video_id=video.id) }}" method="POST" class="delete-video-form">
-                <button type="submit" class="btn btn-danger btn-sm">🗑️ Удалить видео</button>
-            </form>
-            {% endif %}
-        </div>
+        {% if video.visibility == 'unlisted' %}
+        <span class="unlisted-badge">🔗 По ссылке</span>
+        {% endif %}
+    </div>
+
+    <!-- Кнопка копирования ссылки -->
+    <div class="share-section">
+        <button
+            type="button"
+            class="btn btn-outline btn-sm copy-link-btn"
+            data-url="{{ url_for('video.watch', video_id=video.id, _external=True) }}"
+        >
+            📋 Копировать ссылку
+        </button>
+        <span class="copy-success" style="display: none;">✅ Скопировано!</span>
+    </div>
+
+    {% if video.description %}
+    <p>{{ video.description }}</p>
+    {% endif %}
+
+    {% if video.tags %}
+    <div class="video-tags">
+        {% for tag in video.get_tags_list() %}
+        <a href="{{ url_for('search.search', q=tag) }}" class="tag">#{{ tag }}</a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if user and (user.id == video.author.id or user.is_admin()) %}
+    <form action="{{ url_for('video.delete', video_id=video.id) }}" method="POST" class="delete-video-form">
+        <button type="submit" class="btn btn-danger btn-sm">🗑️ Удалить видео</button>
+    </form>
+    {% endif %}
+</div>
 
         <!-- Комментарии -->
         <div class="watch-comments">

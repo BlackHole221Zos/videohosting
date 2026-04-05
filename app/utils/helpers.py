@@ -42,7 +42,6 @@ def save_video(video_file):
     filename = generate_unique_filename(video_file.filename)
     upload_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], 'videos')
 
-    # Создаём папку если не существует
     os.makedirs(upload_folder, exist_ok=True)
 
     filepath = os.path.join(upload_folder, filename)
@@ -67,20 +66,17 @@ def generate_thumbnail(video_filename):
             video_filename
         )
 
-        # Открываем видео
         cap = cv2.VideoCapture(video_path)
 
         if not cap.isOpened():
             return 'default_thumb.jpg'
 
-        # Читаем первый кадр
         ret, frame = cap.read()
         cap.release()
 
         if not ret:
             return 'default_thumb.jpg'
 
-        # Генерируем имя для превью
         thumb_filename = f"thumb_{uuid.uuid4().hex}.jpg"
         thumb_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], 'thumbnails')
 
@@ -88,7 +84,6 @@ def generate_thumbnail(video_filename):
 
         thumb_path = os.path.join(thumb_folder, thumb_filename)
 
-        # Сохраняем превью
         cv2.imwrite(thumb_path, frame)
 
         return thumb_filename
@@ -96,6 +91,30 @@ def generate_thumbnail(video_filename):
     except Exception as e:
         print(f"Ошибка генерации превью: {e}")
         return 'default_thumb.jpg'
+
+
+# ============ СОХРАНЕНИЕ ОБЛОЖКИ ============
+
+def save_thumbnail(thumbnail_file):
+    """
+    Сохраняет пользовательскую обложку видео.
+    Возвращает имя файла или None при ошибке.
+    """
+    if not thumbnail_file:
+        return None
+
+    if not allowed_file(thumbnail_file.filename, ALLOWED_IMAGE):
+        return None
+
+    filename = generate_unique_filename(thumbnail_file.filename)
+    upload_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], 'thumbnails')
+
+    os.makedirs(upload_folder, exist_ok=True)
+
+    filepath = os.path.join(upload_folder, filename)
+    thumbnail_file.save(filepath)
+
+    return filename
 
 
 # ============ СОХРАНЕНИЕ АВАТАРА ============
@@ -111,7 +130,6 @@ def save_avatar(avatar_file, username):
     if not allowed_file(avatar_file.filename, ALLOWED_IMAGE):
         return None
 
-    # Безопасное имя с привязкой к пользователю
     ext = avatar_file.filename.rsplit('.', 1)[1].lower()
     filename = f"avatar_{secure_filename(username)}_{uuid.uuid4().hex[:8]}.{ext}"
 

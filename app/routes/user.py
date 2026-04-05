@@ -19,7 +19,16 @@ def profile(username):
     """Страница профиля"""
 
     user = User.query.filter_by(username=username).first_or_404()
-    videos = Video.query.filter_by(user_id=user.id).order_by(Video.created_at.desc()).all()
+
+    # Показываем только публичные видео (если не сам автор)
+    if g.user and g.user.id == user.id:
+        # Автор видит все свои видео
+        videos = Video.query.filter_by(user_id=user.id) \
+            .order_by(Video.created_at.desc()).all()
+    else:
+        # Остальные — только публичные
+        videos = Video.query.filter_by(user_id=user.id, visibility='public') \
+            .order_by(Video.created_at.desc()).all()
 
     is_following = False
     if g.user and g.user.id != user.id:
@@ -28,8 +37,7 @@ def profile(username):
     return render_template('user/profile.html',
                            profile_user=user,
                            videos=videos,
-                           is_following=is_following
-                           )
+                           is_following=is_following)
 
 
 # ============ РЕДАКТИРОВАНИЕ ПРОФИЛЯ ============
@@ -128,10 +136,11 @@ def subscriptions():
 
     channels = g.user.following.order_by(User.username).all()
 
-    # Подгружаем последние 4 видео каждого канала
     channels_data = []
     for channel in channels:
-        recent = channel.videos.order_by(Video.created_at.desc()).limit(4).all()
+        # Только публичные видео
+        recent = channel.videos.filter_by(visibility='public') \
+            .order_by(Video.created_at.desc()).limit(4).all()
         channels_data.append({
             'user': channel,
             'recent_videos': recent

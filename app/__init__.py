@@ -9,7 +9,6 @@ from app.extensions import db, mail
 def create_app(config_class=Config):
     """Фабрика приложения Flask"""
 
-    # Создание экземпляра Flask
     app = Flask(__name__)
     app.config.from_object(config_class)
 
@@ -17,7 +16,7 @@ def create_app(config_class=Config):
     db.init_app(app)
     mail.init_app(app)
 
-    # Создание папок для загрузок (если не существуют)
+    # Создание папок для загрузок
     upload_paths = [
         os.path.join(app.config['UPLOAD_FOLDER'], 'avatars'),
         os.path.join(app.config['UPLOAD_FOLDER'], 'videos'),
@@ -26,25 +25,25 @@ def create_app(config_class=Config):
     for path in upload_paths:
         os.makedirs(path, exist_ok=True)
 
-    # Загрузка текущего пользователя перед каждым запросом
+    # Папка для документов
+    os.makedirs(os.path.join(app.static_folder, 'docs'), exist_ok=True)
+
+    # Загрузка текущего пользователя
     @app.before_request
     def load_user():
-        """Загружает пользователя из сессии в g.user"""
         from app.models import User
-
         user_id = session.get('user_id')
         if user_id:
             g.user = db.session.get(User, user_id)
         else:
             g.user = None
 
-    # Контекст для всех шаблонов
+    # Контекст для шаблонов
     @app.context_processor
     def inject_user():
-        """Делает g.user доступным во всех шаблонах"""
         return dict(user=g.user if hasattr(g, 'user') else None)
 
-    # Регистрация Blueprint'ов (роутов)
+    # Регистрация Blueprint'ов
     from app.routes.auth import auth_bp
     from app.routes.main import main_bp
     from app.routes.video import video_bp
@@ -57,8 +56,16 @@ def create_app(config_class=Config):
     app.register_blueprint(user_bp)
     app.register_blueprint(search_bp)
 
-    # Инициализация БД и создание админа
+    # Инициализация БД
     from app.models import init_db
     init_db(app)
+
+    # Генерация PDF (безопасно)
+    try:
+        with app.app_context():
+            from app.utils.pdf_generator import generate_legal_pdfs
+            generate_legal_pdfs()
+    except Exception as e:
+        print(f'⚠️ PDF не сгенерированы: {e}')
 
     return app

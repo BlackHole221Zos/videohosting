@@ -1,4 +1,3 @@
-<!-- app/templates/legal/terms.html -->
 {% extends "base.html" %}
 
 {% block title %}Пользовательское соглашение — VidSphere{% endblock %}
@@ -6,7 +5,14 @@
 {% block content %}
 <div class="legal-page">
     <h1>📜 Пользовательское соглашение VidSphere</h1>
-    <p class="legal-date">Дата последнего обновления: 01 января 2025 г.</p>
+    <p class="legal-date">Дата последнего обновления: 05 апреля 2026 г.</p>
+
+    <div class="legal-actions">
+        <a href="{{ url_for('static', filename='docs/terms.pdf') }}" download class="btn btn-outline btn-sm">
+            📥 Скачать PDF
+        </a>
+    </div>
+
 
     <div class="legal-content">
 

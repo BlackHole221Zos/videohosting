@@ -2475,3 +2475,154 @@ ul, ol {
 .reaction-ajax-btn:active {
     transform: scale(0.95);
 }
+
+/* ============================================
+   ЮРИДИЧЕСКИЕ СТРАНИЦЫ — КНОПКА PDF
+============================================ */
+
+.legal-actions {
+    margin-bottom: 24px;
+}
+
+/* ============================================
+   ОБЛОЖКА ВИДЕО — ВЫБОР
+============================================ */
+
+.thumbnail-choice {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.radio-card {
+    display: block;
+    cursor: pointer;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.radio-card:hover {
+    border-color: var(--primary);
+    background: var(--bg-card-hover);
+}
+
+.radio-card.active {
+    border-color: var(--primary);
+    background: rgba(78, 205, 196, 0.1);
+}
+
+.radio-card input[type="radio"] {
+    display: none;
+}
+
+.radio-card-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.radio-icon {
+    font-size: 2rem;
+}
+
+.radio-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.radio-desc {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.custom-thumb-upload {
+    margin-top: 12px;
+    animation: fadeSlideIn 0.3s ease;
+}
+
+.file-label-sm {
+    padding: 20px;
+}
+
+.file-label-sm .file-icon {
+    font-size: 2rem;
+}
+
+.thumb-preview {
+    margin-top: 12px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid var(--primary);
+    max-width: 320px;
+}
+
+.thumb-preview img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* Видео с ограниченным доступом */
+.unlisted-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: rgba(243, 156, 18, 0.15);
+    border: 1px solid var(--warning);
+    border-radius: 12px;
+    font-size: 0.8rem;
+    color: var(--warning);
+    font-weight: 500;
+}
+
+@media (max-width: 480px) {
+    .thumbnail-choice {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ============================================
+   КНОПКА КОПИРОВАНИЯ ССЫЛКИ
+============================================ */
+
+.share-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0;
+}
+
+.copy-link-btn {
+    transition: all 0.3s ease;
+}
+
+.copy-link-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.copy-success {
+    color: var(--success);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.unlisted-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: rgba(243, 156, 18, 0.15);
+    border: 1px solid var(--warning);
+    border-radius: 12px;
+    font-size: 0.8rem;
+    color: var(--warning);
+    font-weight: 500;
+}
