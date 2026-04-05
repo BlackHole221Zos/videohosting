@@ -4,232 +4,231 @@
 {% block title %}{{ video.title }} — VidSphere{% endblock %}
 
 {% block content %}
-<div class="watch-layout">
+<div class="watch-compact">
 
-    <!-- ЛЕВАЯ КОЛОНКА -->
-    <div class="watch-main">
-
-        <!-- Плеер с Ambilight -->
-        <div class="player-wrapper">
-            <div class="player-glow"
-                 style="background-image: url('{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}')">
-            </div>
-            <div class="player-container">
-                <video
-                    class="video-player"
-                    controls
-                    autoplay
-                    poster="{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}"
-                >
+    <!-- КАСТОМНЫЙ ПЛЕЕР -->
+    <div class="player-center">
+        <div class="custom-player" id="customPlayer">
+            <div class="player-screen crt-screen">
+                <div class="scanlines"></div>
+                <video id="videoElement"
+                    poster="{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}">
                     <source src="{{ url_for('static', filename='uploads/videos/' + video.filename) }}" type="video/mp4">
                 </video>
+
+                <!-- Оверлей при паузе -->
+                <div class="play-overlay" id="playOverlay">
+                    <button class="big-play-btn" id="bigPlayBtn">▶</button>
+                </div>
+
+                <!-- Индикатор загрузки -->
+                <div class="loading-indicator" id="loadingIndicator">
+                    <span class="loader">◐</span>
+                </div>
             </div>
-        </div>
 
-        <!-- Заголовок -->
-        <h1 class="watch-title">{{ video.title }}</h1>
-
-        <!-- Панель действий -->
-        <div class="watch-bar">
-            <!-- Автор + подписка -->
-            <div class="watch-author">
-                <a href="{{ url_for('user.profile', username=video.author.username) }}" class="watch-author-link">
-                    <img
-                        src="{{ url_for('static', filename='uploads/avatars/' + video.author.avatar) }}"
-                        class="watch-author-avatar"
-                        onerror="this.src='{{ url_for('static', filename='img/default_avatar.svg') }}'"
-                    >
-                    <div>
-                        <div class="watch-author-name">
-                            {{ video.author.username }}
-                            {% if video.author.is_admin() %}👑{% endif %}
-                        </div>
-                        <div class="watch-author-subs">{{ video.author.followers_count() }} подписчиков</div>
+            <!-- КОНТРОЛЫ -->
+            <div class="player-controls">
+                <!-- Прогресс-бар -->
+                <div class="progress-wrap" id="progressWrap">
+                    <div class="progress-bg">
+                        <div class="progress-buffered" id="progressBuffered"></div>
+                        <div class="progress-bar" id="progressBar"></div>
                     </div>
-                </a>
-
- {% if user and user.id != video.author.id %}
-    {% if user.is_following(video.author) %}
-    <button
-        type="button"
-        class="subscribe-btn subscribed btn-sm subscribe-ajax-btn"
-        data-url="{{ url_for('user.unfollow', username=video.author.username) }}"
-        data-username="{{ video.author.username }}"
-    >
-        <span class="btn-text-default">✓ Подписан</span>
-        <span class="btn-text-hover">Отписаться</span>
-    </button>
-    {% else %}
-    <button
-        type="button"
-        class="subscribe-btn not-subscribed btn-sm subscribe-ajax-btn"
-        data-url="{{ url_for('user.follow', username=video.author.username) }}"
-        data-username="{{ video.author.username }}"
-    >
-        + Подписаться
-    </button>
-    {% endif %}
-{% endif %}
-            </div>
-
-            <!-- Реакции (AJAX) -->
-            <div class="watch-reactions">
-                {% if user %}
-                <div class="reaction-pill">
-                    <button
-                        type="button"
-                        class="pill-btn reaction-ajax-btn {% if user_reaction == 'fire' %}active{% endif %}"
-                        data-url="{{ url_for('video.react', video_id=video.id, reaction_type='fire') }}"
-                        data-reaction="fire"
-                    >
-                        🔥 <span id="fire-count">{{ reactions_count.fire }}</span>
-                    </button>
-                    <button
-                        type="button"
-                        class="pill-btn reaction-ajax-btn {% if user_reaction == 'good' %}active{% endif %}"
-                        data-url="{{ url_for('video.react', video_id=video.id, reaction_type='good') }}"
-                        data-reaction="good"
-                    >
-                        👍 <span id="good-count">{{ reactions_count.good }}</span>
-                    </button>
-                    <button
-                        type="button"
-                        class="pill-btn reaction-ajax-btn {% if user_reaction == 'bad' %}active{% endif %}"
-                        data-url="{{ url_for('video.react', video_id=video.id, reaction_type='bad') }}"
-                        data-reaction="bad"
-                    >
-                        👎 <span id="bad-count">{{ reactions_count.bad }}</span>
-                    </button>
+                    <div class="progress-tooltip" id="progressTooltip">0:00</div>
                 </div>
-                {% else %}
-                <div class="reaction-pill">
-                    <a href="{{ url_for('auth.login') }}" class="pill-btn">🔥 {{ reactions_count.fire }}</a>
-                    <a href="{{ url_for('auth.login') }}" class="pill-btn">👍 {{ reactions_count.good }}</a>
-                    <a href="{{ url_for('auth.login') }}" class="pill-btn">👎 {{ reactions_count.bad }}</a>
+
+                <!-- Нижняя панель -->
+                <div class="controls-row">
+                    <!-- Левая часть -->
+                    <div class="controls-left">
+                        <button class="ctrl-btn" id="playPauseBtn" title="Play/Pause">
+                            <span class="icon-play">▶</span>
+                            <span class="icon-pause">❚❚</span>
+                        </button>
+
+                        <button class="ctrl-btn" id="stopBtn" title="Stop">◼</button>
+                        <button class="ctrl-btn" id="rewindBtn" title="-10 сек">⏪</button>
+                        <button class="ctrl-btn" id="forwardBtn" title="+10 сек">⏩</button>
+
+                        <div class="volume-wrap">
+                            <button class="ctrl-btn" id="muteBtn" title="Mute">
+                                <span class="icon-vol">🔊</span>
+                                <span class="icon-mute">🔇</span>
+                            </button>
+                            <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="100">
+                        </div>
+
+                        <span class="time-display">
+                            <span id="currentTime">0:00</span>
+                            <span class="time-sep">/</span>
+                            <span id="duration">0:00</span>
+                        </span>
+                    </div>
+
+                    <!-- Правая часть -->
+                    <div class="controls-right">
+                        <div class="speed-wrap">
+                            <button class="ctrl-btn ctrl-text" id="speedBtn">1x</button>
+                            <div class="speed-menu" id="speedMenu">
+                                <button data-speed="0.25">0.25x</button>
+                                <button data-speed="0.5">0.5x</button>
+                                <button data-speed="0.75">0.75x</button>
+                                <button data-speed="1" class="active">1x</button>
+                                <button data-speed="1.25">1.25x</button>
+                                <button data-speed="1.5">1.5x</button>
+                                <button data-speed="2">2x</button>
+                            </div>
+                        </div>
+
+                        <button class="ctrl-btn" id="pipBtn" title="Картинка в картинке">🖼</button>
+                        <button class="ctrl-btn" id="wideBtn" title="Широкий режим">⬌</button>
+                        <button class="ctrl-btn" id="fullscreenBtn" title="На весь экран">⛶</button>
+                    </div>
                 </div>
-                {% endif %}
-                <span class="karma-pill">Карма: <strong id="karma-total">{{ video.karma }}</strong></span>
             </div>
         </div>
+    </div>
 
-        <!-- Описание -->
-        <!-- Описание -->
-<div class="watch-desc">
-    <div class="watch-desc-stats">
-        {{ video.views }} просмотров • {{ video.created_at.strftime('%d.%m.%Y') }}
-        <span class="mood-tag">{{ video.mood_emoji() }} {{ video.mood_name() }}</span>
+    <!-- ИНФО-СТРОКА -->
+    <div class="info-bar">
+        <div class="info-left">
+            <span class="mood-icon">{{ video.mood_emoji() }}</span>
+            <h1 class="title glitch-hover">{{ video.title }}</h1>
+            {% if video.visibility == 'unlisted' %}
+                <span class="badge-unlisted">🔗</span>
+            {% endif %}
+        </div>
+        <div class="info-right">
+            <span class="stat">👁 {{ video.views }}</span>
+            <span class="stat">📅 {{ video.created_at.strftime('%d.%m') }}</span>
+            <button class="btn-icon copy-link-btn glitch-hover"
+                    data-url="{{ url_for('video.watch', video_id=video.id, _external=True) }}"
+                    title="Копировать">📋</button>
+        </div>
+    </div>
 
-        {% if video.visibility == 'unlisted' %}
-        <span class="unlisted-badge">🔗 По ссылке</span>
+    <!-- АВТОР + ТЕГИ + РЕАКЦИИ -->
+    <div class="actions-bar">
+        <div class="author-tags-box">
+            <a href="{{ url_for('user.profile', username=video.author.username) }}" class="author-link glitch-hover">
+                <img src="{{ url_for('static', filename='uploads/avatars/' + video.author.avatar) }}"
+                     class="ava" onerror="this.src='{{ url_for('static', filename='img/default_avatar.svg') }}'">
+                <span class="name">{{ video.author.username }}{% if video.author.is_admin() %} 👑{% endif %}</span>
+            </a>
+
+            {% if user and user.id != video.author.id %}
+                {% if user.is_following(video.author) %}
+                    <button class="btn-sub subscribed subscribe-ajax-btn glitch-hover"
+                        data-url="{{ url_for('user.unfollow', username=video.author.username) }}"
+                        data-username="{{ video.author.username }}">
+                        <span class="btn-text-default">✓</span>
+                        <span class="btn-text-hover">✕</span>
+                    </button>
+                {% else %}
+                    <button class="btn-sub subscribe-ajax-btn glitch-hover"
+                        data-url="{{ url_for('user.follow', username=video.author.username) }}"
+                        data-username="{{ video.author.username }}">+</button>
+                {% endif %}
+            {% endif %}
+
+            {% if video.tags %}
+                <div class="tags-inline">
+                    {% for tag in video.get_tags_list()[:4] %}
+                        <a href="{{ url_for('search.search', q=tag) }}" class="tag-sm glitch-hover">#{{ tag }}</a>
+                    {% endfor %}
+                    {% if video.get_tags_list()|length > 4 %}
+                        <span class="tag-more">+{{ video.get_tags_list()|length - 4 }}</span>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="reactions-box">
+            {% if user %}
+                <button class="react-btn reaction-ajax-btn glitch-hover {% if user_reaction == 'fire' %}active{% endif %}"
+                    data-url="{{ url_for('video.react', video_id=video.id, reaction_type='fire') }}" data-reaction="fire">
+                    🔥<span id="fire-count">{{ reactions_count.fire }}</span>
+                </button>
+                <button class="react-btn reaction-ajax-btn glitch-hover {% if user_reaction == 'good' %}active{% endif %}"
+                    data-url="{{ url_for('video.react', video_id=video.id, reaction_type='good') }}" data-reaction="good">
+                    👍<span id="good-count">{{ reactions_count.good }}</span>
+                </button>
+                <button class="react-btn reaction-ajax-btn glitch-hover {% if user_reaction == 'bad' %}active{% endif %}"
+                    data-url="{{ url_for('video.react', video_id=video.id, reaction_type='bad') }}" data-reaction="bad">
+                    👎<span id="bad-count">{{ reactions_count.bad }}</span>
+                </button>
+            {% else %}
+                <a href="{{ url_for('auth.login') }}" class="react-btn">🔥{{ reactions_count.fire }}</a>
+                <a href="{{ url_for('auth.login') }}" class="react-btn">👍{{ reactions_count.good }}</a>
+                <a href="{{ url_for('auth.login') }}" class="react-btn">👎{{ reactions_count.bad }}</a>
+            {% endif %}
+            <div class="karma-box">⚡<span id="karma-total">{{ video.karma }}</span></div>
+        </div>
+
+        {% if user and (user.id == video.author.id or user.is_admin()) %}
+            <form action="{{ url_for('video.delete', video_id=video.id) }}" method="POST" class="delete-inline">
+                <button type="submit" class="btn-del glitch-hover" title="Удалить">🗑️</button>
+            </form>
         {% endif %}
     </div>
 
-    <!-- Кнопка копирования ссылки -->
-    <div class="share-section">
-        <button
-            type="button"
-            class="btn btn-outline btn-sm copy-link-btn"
-            data-url="{{ url_for('video.watch', video_id=video.id, _external=True) }}"
-        >
-            📋 Копировать ссылку
-        </button>
-        <span class="copy-success" style="display: none;">✅ Скопировано!</span>
-    </div>
-
     {% if video.description %}
-    <p>{{ video.description }}</p>
+    <details class="desc-compact">
+        <summary>📝 Описание</summary>
+        <p>{{ video.description }}</p>
+    </details>
     {% endif %}
 
-    {% if video.tags %}
-    <div class="video-tags">
-        {% for tag in video.get_tags_list() %}
-        <a href="{{ url_for('search.search', q=tag) }}" class="tag">#{{ tag }}</a>
-        {% endfor %}
-    </div>
-    {% endif %}
-
-    {% if user and (user.id == video.author.id or user.is_admin()) %}
-    <form action="{{ url_for('video.delete', video_id=video.id) }}" method="POST" class="delete-video-form">
-        <button type="submit" class="btn btn-danger btn-sm">🗑️ Удалить видео</button>
-    </form>
-    {% endif %}
-</div>
-
-        <!-- Комментарии -->
-        <div class="watch-comments">
-            <h3>💬 Комментарии (<span id="comments-count">{{ comments|length }}</span>)</h3>
+    <!-- НИЖНЯЯ СЕКЦИЯ -->
+    <div class="bottom-grid">
+        <div class="comments-box">
+            <div class="box-header">
+                <span class="cursor-blink">▮</span> Комменты [<span id="comments-count">{{ comments|length }}</span>]
+            </div>
 
             {% if user %}
-            <form id="comment-form" data-url="{{ url_for('video.add_comment', video_id=video.id) }}" class="comment-write">
-                <img
-                    src="{{ url_for('static', filename='uploads/avatars/' + user.avatar) }}"
-                    class="comment-my-avatar"
-                    onerror="this.src='{{ url_for('static', filename='img/default_avatar.svg') }}'"
-                >
-                <div class="comment-write-body">
-                    <textarea
-                        class="form-input"
-                        placeholder="Написать комментарий..."
-                        rows="2"
-                        required
-                        maxlength="1000"
-                    ></textarea>
-                    <button type="submit" class="btn btn-primary btn-sm">💬 Отправить</button>
-                </div>
+            <form id="comment-form" data-url="{{ url_for('video.add_comment', video_id=video.id) }}" class="comment-form">
+                <span class="prompt">></span>
+                <input type="text" class="comment-input" placeholder="Написать..." required maxlength="500">
+                <button type="submit" class="btn-send glitch-hover">➤</button>
             </form>
             {% else %}
-            <p class="comment-login"><a href="{{ url_for('auth.login') }}">Войдите</a>, чтобы комментировать</p>
+            <p class="login-hint"><a href="{{ url_for('auth.login') }}">Войти</a></p>
             {% endif %}
 
-            <div class="comment-list" id="comments-list">
-                {% for comment in comments %}
-                <div class="comment-item" data-id="{{ comment.id }}">
-                    <a href="{{ url_for('user.profile', username=comment.author.username) }}">
-                        <img
-                            src="{{ url_for('static', filename='uploads/avatars/' + comment.author.avatar) }}"
-                            class="comment-avatar"
-                            onerror="this.src='{{ url_for('static', filename='img/default_avatar.svg') }}'"
-                        >
-                    </a>
-                    <div class="comment-body">
-                        <div class="comment-head">
-                            <a href="{{ url_for('user.profile', username=comment.author.username) }}" class="comment-author">
-                                {{ comment.author.username }}
-                            </a>
-                            <span class="comment-date">{{ comment.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
-                        </div>
-                        <p class="comment-text">{{ comment.text }}</p>
-                    </div>
+            <div class="comments-list" id="comments-list">
+                {% for comment in comments[:10] %}
+                <div class="comment">
+                    <span class="c-author">{{ comment.author.username }}:</span>
+                    <span class="c-text">{{ comment.text|truncate(120) }}</span>
                 </div>
                 {% else %}
-                <p class="empty">Пока нет комментариев. Будьте первым!</p>
+                <p class="empty-hint">// Пусто</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="related-box">
+            <div class="box-header">
+                <span class="cursor-blink">▮</span> Похожие
+            </div>
+            <div class="related-list">
+                {% for rv in related_videos[:6] %}
+                <a href="{{ url_for('video.watch', video_id=rv.id) }}" class="related-item glitch-hover">
+                    <img src="{{ url_for('static', filename='uploads/thumbnails/' + rv.thumbnail) }}"
+                         class="r-thumb" onerror="this.src='{{ url_for('static', filename='img/default_thumb.svg') }}'">
+                    <div class="r-info">
+                        <span class="r-title">{{ rv.title|truncate(28) }}</span>
+                        <span class="r-meta">@{{ rv.author.username }} • ⚡{{ rv.karma }}</span>
+                    </div>
+                </a>
+                {% else %}
+                <p class="empty-hint">// Нет</p>
                 {% endfor %}
             </div>
         </div>
     </div>
 
-    <!-- ПРАВАЯ КОЛОНКА -->
-    <aside class="watch-sidebar">
-        <h3>Похожие видео</h3>
-        <div class="related-list">
-            {% for rv in related_videos %}
-            <a href="{{ url_for('video.watch', video_id=rv.id) }}" class="related-card">
-                <div class="related-thumb">
-                    <img
-                        src="{{ url_for('static', filename='uploads/thumbnails/' + rv.thumbnail) }}"
-                        alt="{{ rv.title }}"
-                        onerror="this.src='{{ url_for('static', filename='img/default_thumb.svg') }}'"
-                    >
-                    <span class="related-views">{{ rv.views }} 👁️</span>
-                </div>
-                <div class="related-info">
-                    <div class="related-title">{{ rv.title|truncate(40) }}</div>
-                    <div class="related-author">{{ rv.author.username }}</div>
-                    <div class="related-meta">{{ rv.karma }} 🔥</div>
-                </div>
-            </a>
-            {% endfor %}
-        </div>
-    </aside>
 </div>
 {% endblock %}

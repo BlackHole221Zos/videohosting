@@ -6,135 +6,168 @@
 {% block content %}
 <div class="home-page">
 
-    <!-- ============ HERO КАРУСЕЛЬ ============ -->
-    {% if hero_videos %}
-    <section class="hero-section">
-        <div class="hero-carousel" id="heroCarousel">
-            {% for video in hero_videos %}
-            <div class="hero-slide {% if loop.first %}active{% endif %}">
-                <a href="{{ url_for('video.watch', video_id=video.id) }}">
-                    <img
-                        src="{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}"
-                        alt="{{ video.title }}"
-                        onerror="this.src='{{ url_for('static', filename='img/default_thumb.jpg') }}'"
-                    >
-                    <div class="hero-overlay">
-                        <span class="hero-mood">{{ video.mood_emoji() }}</span>
-                        <h2>{{ video.title }}</h2>
-                        <p>{{ video.author.username }} • {{ video.views }} 👁️ • {{ video.karma }} 🔥</p>
+    <!-- ВЕРХНИЙ БЛОК: HERO + ЧАРТ -->
+    <div class="home-top">
+        <!-- Hero карусель -->
+        <div class="hero-section">
+            <div class="hero-carousel" id="heroCarousel">
+                {% if hero_videos %}
+                    {% for video in hero_videos %}
+                        <div class="hero-slide {% if loop.first %}active{% endif %}">
+                            <a href="{{ url_for('video.watch', video_id=video.id) }}">
+                                <img
+                                    src="{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}"
+                                    alt="{{ video.title }}"
+                                    onerror="this.src='{{ url_for('static', filename='img/default_thumb.svg') }}'"
+                                >
+                                <div class="hero-overlay">
+                                    <span class="hero-mood">{{ video.mood_emoji() }}</span>
+                                    <h2>{{ video.title }}</h2>
+                                    <p>{{ video.author.username }} • {{ video.views }} просмотров</p>
+                                </div>
+                            </a>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="hero-slide active hero-empty">
+                        <div class="hero-overlay">
+                            <span class="hero-mood">🌌</span>
+                            <h2>Добро пожаловать в VidSphere</h2>
+                            <p>Загрузите первое видео!</p>
+                        </div>
                     </div>
-                </a>
-            </div>
-            {% endfor %}
-        </div>
-        <div class="hero-dots">
-            {% for video in hero_videos %}
-            <button class="hero-dot {% if loop.first %}active{% endif %}" data-index="{{ loop.index0 }}"></button>
-            {% endfor %}
-        </div>
-    </section>
-    {% endif %}
-
-    <!-- ============ ОСНОВНОЙ КОНТЕНТ ============ -->
-    <div class="home-content">
-
-        <!-- ЛЕВАЯ КОЛОНКА: Табы по Mood -->
-        <div class="home-main">
-
-            <!-- Табы настроений -->
-            <div class="mood-tabs">
-                <button class="mood-tab active" data-mood="all">🎬 Все</button>
-                {% for key, mood in moods.items() %}
-                <button class="mood-tab" data-mood="{{ key }}">{{ mood.emoji }} {{ mood.name }}</button>
-                {% endfor %}
+                {% endif %}
             </div>
 
-            <!-- Контент табов -->
-            <div class="mood-content">
-                <!-- Все видео (по умолчанию) -->
-                <div class="mood-panel active" data-mood="all">
-                    <h3>🆕 Новые видео</h3>
-                    <div class="video-grid">
-                        {% for video in new_videos %}
-                            {% include "partials/video_card.html" %}
-                        {% else %}
-                            <p class="empty">Пока нет видео. Будьте первым!</p>
-                        {% endfor %}
-                    </div>
+            {% if hero_videos and hero_videos|length > 1 %}
+                <div class="hero-dots">
+                    {% for video in hero_videos %}
+                        <button class="hero-dot {% if loop.first %}active{% endif %}"></button>
+                    {% endfor %}
                 </div>
+            {% endif %}
+        </div>
 
-                <!-- Панели по настроениям -->
-                {% for key, mood in moods.items() %}
-                <div class="mood-panel" data-mood="{{ key }}">
-                    <h3>{{ mood.emoji }} {{ mood.name }}</h3>
-                    <div class="video-grid">
-                        {% for video in mood.videos %}
-                            {% include "partials/video_card.html" %}
-                        {% else %}
-                            <p class="empty">Нет видео в этой категории</p>
+        <!-- Чарт ТОП-10 -->
+        <div class="chart-section">
+            <div class="chart">
+                <h3>🔥 ТОП-10</h3>
+                <div class="chart-list">
+                    {% if chart_videos %}
+                        {% for video in chart_videos %}
+                            <a href="{{ url_for('video.watch', video_id=video.id) }}" class="chart-item">
+                                <span class="chart-position">{{ loop.index }}</span>
+                                <img
+                                    src="{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}"
+                                    class="chart-thumb"
+                                    onerror="this.src='{{ url_for('static', filename='img/default_thumb.svg') }}'"
+                                >
+                                <div class="chart-info">
+                                    <span class="chart-title">{{ video.title }}</span>
+                                    <span class="chart-meta">{{ video.author.username }} • {{ video.karma }} 🔥</span>
+                                </div>
+                            </a>
                         {% endfor %}
-                    </div>
-                    {% if mood.videos|length >= 6 %}
-                    <a href="{{ url_for('main.mood', mood_name=key) }}" class="see-all">Смотреть все →</a>
+                    {% else %}
+                        <p class="chart-empty">Пока нет видео</p>
                     {% endif %}
                 </div>
-                {% endfor %}
             </div>
+        </div>
+    </div>
 
-            <!-- Тренды -->
-            {% if trending_videos %}
-            <section class="section">
-                <h3>🔥 В тренде</h3>
-                <div class="video-grid">
-                    {% for video in trending_videos[:6] %}
+    <!-- ТАБЫ НАСТРОЕНИЙ -->
+    <div class="mood-section">
+        <div class="mood-tabs">
+            <button class="mood-tab active" data-mood="all">🌟 Все</button>
+            <button class="mood-tab" data-mood="new">🆕 Новое</button>
+            <button class="mood-tab" data-mood="trending">📈 В тренде</button>
+            {% for mood_key, mood_data in moods.items() %}
+                <button class="mood-tab" data-mood="{{ mood_key }}">{{ mood_data.emoji }} {{ mood_data.name }}</button>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- СЕТКА ВИДЕО -->
+    <div class="videos-section">
+
+        <!-- Все -->
+        <div class="mood-panel active" data-mood="all">
+            {% if new_videos %}
+                <div class="video-grid-full">
+                    {% for video in new_videos %}
                         {% include "partials/video_card.html" %}
                     {% endfor %}
                 </div>
-            </section>
-            {% endif %}
-
-            <!-- Рекомендации -->
-            {% if recommended %}
-            <section class="section">
-                <h3>✨ Рекомендуем вам</h3>
-                <div class="video-grid">
-                    {% for video in recommended %}
-                        {% include "partials/video_card.html" %}
-                    {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <p>Пока нет видео</p>
+                    {% if user %}
+                        <a href="{{ url_for('video.upload') }}" class="btn btn-primary">📤 Загрузить первое видео</a>
+                    {% endif %}
                 </div>
-            </section>
             {% endif %}
-
         </div>
 
-        <!-- ПРАВАЯ КОЛОНКА: Чарт -->
-        <aside class="home-sidebar">
-            <div class="chart">
-                <h3>🏆 Топ-10</h3>
-                <ol class="chart-list">
-                    {% for video in chart_videos %}
-                    <li class="chart-item">
-                        <span class="chart-position">{{ loop.index }}</span>
-                        <a href="{{ url_for('video.watch', video_id=video.id) }}" class="chart-link">
-                            <img
-                                src="{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}"
-                                alt="{{ video.title }}"
-                                class="chart-thumb"
-                                onerror="this.src='{{ url_for('static', filename='img/default_thumb.jpg') }}'"
-                            >
-                            <div class="chart-info">
-                                <span class="chart-title">{{ video.title|truncate(30) }}</span>
-                                <span class="chart-meta">{{ video.karma }} 🔥</span>
-                            </div>
-                        </a>
-                    </li>
-                    {% else %}
-                    <li class="empty">Чарт пуст</li>
+        <!-- Новое -->
+        <div class="mood-panel" data-mood="new">
+            {% if new_videos %}
+                <div class="video-grid-full">
+                    {% for video in new_videos %}
+                        {% include "partials/video_card.html" %}
                     {% endfor %}
-                </ol>
-            </div>
-        </aside>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>Пока нет новых видео</p>
+                </div>
+            {% endif %}
+        </div>
 
+        <!-- В тренде -->
+        <div class="mood-panel" data-mood="trending">
+            {% if trending_videos %}
+                <div class="video-grid-full">
+                    {% for video in trending_videos %}
+                        {% include "partials/video_card.html" %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>Пока нет трендовых видео</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- По настроениям -->
+        {% for mood_key, mood_data in moods.items() %}
+            <div class="mood-panel" data-mood="{{ mood_key }}">
+                {% if mood_data.videos %}
+                    <div class="video-grid-full">
+                        {% for video in mood_data.videos %}
+                            {% include "partials/video_card.html" %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <p>Нет видео в категории "{{ mood_data.name }}"</p>
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
     </div>
+
+    <!-- РЕКОМЕНДАЦИИ -->
+    {% if user and recommended %}
+        <div class="recommendations-section">
+            <h2>🎯 Рекомендации для вас</h2>
+            <div class="video-grid-full">
+                {% for video in recommended %}
+                    {% include "partials/video_card.html" %}
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
 </div>
 {% endblock %}

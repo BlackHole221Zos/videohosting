@@ -1,25 +1,22 @@
 <!-- app/templates/partials/video_card.html -->
-<!-- Карточка видео (используется во многих местах) -->
-
-<article class="video-card">
+<div class="video-card">
     <a href="{{ url_for('video.watch', video_id=video.id) }}">
         <div class="video-thumb">
             <img
                 src="{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}"
                 alt="{{ video.title }}"
-                loading="lazy"
-                onerror="this.src='{{ url_for('static', filename='img/default_thumb.jpg') }}'"
+                onerror="this.src='{{ url_for('static', filename='img/default_thumb.svg') }}'"
             >
             <span class="video-mood-badge">{{ video.mood_emoji() }}</span>
             <span class="video-views-badge">{{ video.views }} 👁️</span>
         </div>
         <div class="video-info">
-            <h4 class="video-title">{{ video.title|truncate(50) }}</h4>
+            <h3 class="video-title">{{ video.title }}</h3>
             <p class="video-author">{{ video.author.username }}</p>
-            <p class="video-meta">
+            <div class="video-meta">
+                <span>{{ video.created_at.strftime('%d.%m.%Y') }}</span>
                 <span class="karma">{{ video.karma }} 🔥</span>
-                <span class="date">{{ video.created_at.strftime('%d.%m.%Y') }}</span>
-            </p>
+            </div>
         </div>
     </a>
-</article>
+</div>

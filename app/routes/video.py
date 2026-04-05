@@ -6,6 +6,7 @@ from app.models import Video, Comment, Reaction, WatchHistory
 from app.forms import VideoUploadForm, CommentForm
 from app.utils.decorators import login_required
 from app.utils.helpers import save_video, generate_thumbnail, delete_file, save_thumbnail
+from datetime import datetime
 
 video_bp = Blueprint('video', __name__)
 
@@ -75,7 +76,7 @@ def watch(video_id):
 
         if existing:
             # Обновляем время просмотра
-            existing.watched_at = db.func.now()
+            existing.watched_at = datetime.utcnow()
         else:
             history = WatchHistory(user_id=g.user.id, video_id=video.id)
             db.session.add(history)

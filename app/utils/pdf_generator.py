@@ -51,7 +51,7 @@ class VidSpherePDF(FPDF):
         self.set_y(-15)
         self.set_font('DejaVu', 'I', 8)
         self.set_text_color(150, 150, 150)
-        self.cell(0, 10, f'VidSphere © 2025  |  Стр. {self.page_no()}/{{nb}}', align='C')
+        self.cell(0, 10, f'VidSphere © 2026  |  Стр. {self.page_no()}/{{nb}}', align='C')
 
     def add_title(self, text):
         self.set_font('DejaVu', 'B', 20)
@@ -105,7 +105,7 @@ def _generate_terms(filepath):
 
     pdf.add_title('ПОЛЬЗОВАТЕЛЬСКОЕ СОГЛАШЕНИЕ')
     pdf.add_subtitle('VidSphere — Космический видеохостинг')
-    pdf.add_date('Дата обновления: 01 января 2025 г.')
+    pdf.add_date('Дата обновления: 4 Апреля 2026 г.')
 
     # 1
     pdf.add_heading('1. Общие положения')
@@ -224,7 +224,7 @@ def _generate_privacy(filepath):
 
     pdf.add_title('ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ')
     pdf.add_subtitle('VidSphere — Космический видеохостинг')
-    pdf.add_date('Дата обновления: 01 января 2025 г.')
+    pdf.add_date('Дата обновления: 4 Апреля 2026 г.')
 
     # 1
     pdf.add_heading('1. Общие положения')

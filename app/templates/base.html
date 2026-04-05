@@ -5,37 +5,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}VidSphere{% endblock %}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <!-- ============ ШАПКА ============ -->
+    <!-- ШАПКА -->
     <header class="header">
         <div class="container">
             <nav class="nav">
-                <!-- Логотип -->
                 <a href="{{ url_for('main.index') }}" class="logo">
-                    🌌 VidSphere
+                    <span class="logo-icon">◈</span>
+                    <span class="logo-text">VidSphere</span>
                 </a>
 
-                <!-- Поиск -->
                 <form class="search-form" action="{{ url_for('search.search') }}" method="GET">
                     <input
                         type="text"
                         name="q"
-                        placeholder="🔍 Поиск видео..."
+                        placeholder="Поиск видео..."
                         value="{{ request.args.get('q', '') }}"
                         class="search-input"
                     >
                     <button type="submit" class="search-btn">Найти</button>
                 </form>
 
-                <!-- Меню -->
-                                <!-- Меню -->
                 <div class="nav-menu">
                     {% if user %}
                         <a href="{{ url_for('video.upload') }}" class="nav-link">📤 Загрузить</a>
                         <a href="{{ url_for('user.subscriptions') }}" class="nav-link">📺 Подписки</a>
-                        <a href="{{ url_for('user.history') }}" class="nav-link">👁️ История</a>
+                        <a href="{{ url_for('user.history') }}" class="nav-link">🕐 История</a>
 
                         <div class="dropdown">
                             <button class="dropdown-toggle">
@@ -45,18 +47,19 @@
                                     class="nav-avatar"
                                     onerror="this.src='{{ url_for('static', filename='img/default_avatar.svg') }}'"
                                 >
-                                <span>{{ user.username }}</span>
+                                <span class="nav-username">{{ user.username }}</span>
+                                <span class="dropdown-arrow">▾</span>
                             </button>
                             <div class="dropdown-menu">
                                 <a href="{{ url_for('user.profile', username=user.username) }}">👤 Профиль</a>
                                 <a href="{{ url_for('user.subscriptions') }}">📺 Мои подписки</a>
-                                <a href="{{ url_for('user.history') }}">👁️ История</a>
+                                <a href="{{ url_for('user.history') }}">🕐 История</a>
                                 <a href="{{ url_for('user.edit', username=user.username) }}">⚙️ Настройки</a>
                                 {% if user.is_admin() %}
                                     <a href="#">👑 Админ-панель</a>
                                 {% endif %}
                                 <hr>
-                                <a href="{{ url_for('auth.logout') }}">🚪 Выйти</a>
+                                <a href="{{ url_for('auth.logout') }}" class="logout-link">🚪 Выйти</a>
                             </div>
                         </div>
                     {% else %}
@@ -65,23 +68,22 @@
                     {% endif %}
 
                     <button class="theme-toggle" id="themeToggle" title="Сменить тему">
-                        🌙
+                        <span class="theme-icon">🌙</span>
                     </button>
                 </div>
             </nav>
         </div>
     </header>
 
-    <!-- ============ КОНТЕНТ ============ -->
+    <!-- КОНТЕНТ -->
     <main class="main">
         <div class="container">
-            <!-- Flash сообщения -->
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     <div class="alerts">
                         {% for category, message in messages %}
                             <div class="alert alert-{{ category }}">
-                                {{ message }}
+                                <span>{{ message }}</span>
                                 <button class="alert-close" onclick="this.parentElement.remove()">×</button>
                             </div>
                         {% endfor %}
@@ -93,12 +95,11 @@
         </div>
     </main>
 
-    <!-- ============ ФУТЕР ============ -->
-     <!-- Заменить footer в base.html -->
+    <!-- ФУТЕР -->
     <footer class="footer">
         <div class="container">
             <div class="footer-content">
-                <p>© 2025 VidSphere — Космический видеохостинг 🌌</p>
+                <p>© 2026 VidSphere — Космический видеохостинг 🌌</p>
                 <div class="footer-links">
                     <a href="{{ url_for('main.terms') }}">Пользовательское соглашение</a>
                     <a href="{{ url_for('main.privacy') }}">Политика конфиденциальности</a>

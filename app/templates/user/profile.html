@@ -6,7 +6,7 @@
 {% block content %}
 <div class="profile-page">
 
-    <!-- Шапка профиля -->
+    <!-- ШАПКА ПРОФИЛЯ -->
     <div class="profile-header">
         <img
             src="{{ url_for('static', filename='uploads/avatars/' + profile_user.avatar) }}"
@@ -46,48 +46,55 @@
                 </div>
             </div>
 
-           <div class="profile-actions">
-{% if user and user.id == profile_user.id %}
-    <a href="{{ url_for('user.edit', username=profile_user.username) }}" class="btn btn-outline">
-        ⚙️ Редактировать
-    </a>
-{% elif user %}
-    {% if is_following %}
-    <button
-        type="button"
-        class="subscribe-btn subscribed subscribe-ajax-btn"
-        data-url="{{ url_for('user.unfollow', username=profile_user.username) }}"
-        data-username="{{ profile_user.username }}"
-    >
-        <span class="btn-text-default">✓ Подписан</span>
-        <span class="btn-text-hover">Отписаться</span>
-    </button>
-    {% else %}
-    <button
-        type="button"
-        class="subscribe-btn not-subscribed subscribe-ajax-btn"
-        data-url="{{ url_for('user.follow', username=profile_user.username) }}"
-        data-username="{{ profile_user.username }}"
-    >
-        + Подписаться
-    </button>
-    {% endif %}
-{% endif %}
-</div>
+            <div class="profile-actions">
+                {% if user and user.id == profile_user.id %}
+                    <a href="{{ url_for('user.edit', username=profile_user.username) }}" class="btn btn-outline">
+                        ⚙️ Редактировать
+                    </a>
+                {% elif user %}
+                    {% if is_following %}
+                        <button
+                            type="button"
+                            class="subscribe-btn subscribed subscribe-ajax-btn"
+                            data-url="{{ url_for('user.unfollow', username=profile_user.username) }}"
+                            data-username="{{ profile_user.username }}"
+                        >
+                            <span class="btn-text-default">✓ Вы подписаны</span>
+                            <span class="btn-text-hover">Отписаться</span>
+                        </button>
+                    {% else %}
+                        <button
+                            type="button"
+                            class="subscribe-btn not-subscribed subscribe-ajax-btn"
+                            data-url="{{ url_for('user.follow', username=profile_user.username) }}"
+                            data-username="{{ profile_user.username }}"
+                        >
+                            + Подписаться
+                        </button>
+                    {% endif %}
+                {% endif %}
+            </div>
         </div>
     </div>
 
-    <!-- Видео пользователя -->
+    <!-- ВИДЕО -->
     <div class="profile-videos">
         <h2>📹 Видео ({{ videos|length }})</h2>
 
-        <div class="video-grid">
-            {% for video in videos %}
-                {% include "partials/video_card.html" %}
-            {% else %}
-                <p class="empty">Пользователь ещё не загрузил ни одного видео</p>
-            {% endfor %}
-        </div>
+        {% if videos %}
+            <div class="video-grid-full">
+                {% for video in videos %}
+                    {% include "partials/video_card.html" %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <p>Пользователь ещё не загрузил ни одного видео</p>
+                {% if user and user.id == profile_user.id %}
+                    <a href="{{ url_for('video.upload') }}" class="btn btn-primary">📤 Загрузить видео</a>
+                {% endif %}
+            </div>
+        {% endif %}
     </div>
 
 </div>

@@ -5,15 +5,14 @@
 
 {% block content %}
 <div class="history-page">
-    <div class="history-header">
-        <h1>👁️ История просмотров</h1>
 
+    <!-- Заголовок -->
+    <div class="history-header">
+        <h1>🕐 История просмотров</h1>
         {% if grouped.today or grouped.yesterday or grouped.this_week or grouped.earlier %}
-        <form action="{{ url_for('user.clear_history') }}" method="POST" class="clear-history-form">
-            <button type="submit" class="btn btn-outline btn-sm">
-                🗑️ Очистить историю
-            </button>
-        </form>
+            <form method="POST" action="{{ url_for('user.clear_history') }}" class="clear-history-form">
+                <button type="submit" class="btn btn-outline btn-sm">🗑️ Очистить всё</button>
+            </form>
         {% endif %}
     </div>
 
@@ -22,10 +21,26 @@
         <!-- Сегодня -->
         {% if grouped.today %}
         <div class="history-section">
-            <h3 class="history-date">Сегодня</h3>
+            <h3 class="history-date">📅 Сегодня</h3>
             <div class="history-list">
                 {% for item in grouped.today %}
-                    {% include 'user/partials/history_item.html' %}
+                    <div class="history-item">
+                        <a href="{{ url_for('video.watch', video_id=item.video.id) }}" class="history-thumb">
+                            <img src="{{ url_for('static', filename='uploads/thumbnails/' + item.video.thumbnail) }}"
+                                 onerror="this.src='{{ url_for('static', filename='img/default_thumb.svg') }}'">
+                        </a>
+                        <div class="history-info">
+                            <a href="{{ url_for('video.watch', video_id=item.video.id) }}" class="history-title">
+                                {{ item.video.mood_emoji() }} {{ item.video.title }}
+                            </a>
+                            <p class="history-meta">
+                                {{ item.video.author.username }} • {{ item.video.views }} 👁️ • {{ item.watched_at.strftime('%H:%M') }}
+                            </p>
+                        </div>
+                        <form method="POST" action="{{ url_for('user.delete_history_item', history_id=item.id) }}">
+                            <button type="submit" class="history-remove" title="Удалить">×</button>
+                        </form>
+                    </div>
                 {% endfor %}
             </div>
         </div>
@@ -34,10 +49,26 @@
         <!-- Вчера -->
         {% if grouped.yesterday %}
         <div class="history-section">
-            <h3 class="history-date">Вчера</h3>
+            <h3 class="history-date">📅 Вчера</h3>
             <div class="history-list">
                 {% for item in grouped.yesterday %}
-                    {% include 'user/partials/history_item.html' %}
+                    <div class="history-item">
+                        <a href="{{ url_for('video.watch', video_id=item.video.id) }}" class="history-thumb">
+                            <img src="{{ url_for('static', filename='uploads/thumbnails/' + item.video.thumbnail) }}"
+                                 onerror="this.src='{{ url_for('static', filename='img/default_thumb.svg') }}'">
+                        </a>
+                        <div class="history-info">
+                            <a href="{{ url_for('video.watch', video_id=item.video.id) }}" class="history-title">
+                                {{ item.video.mood_emoji() }} {{ item.video.title }}
+                            </a>
+                            <p class="history-meta">
+                                {{ item.video.author.username }} • {{ item.video.views }} 👁️
+                            </p>
+                        </div>
+                        <form method="POST" action="{{ url_for('user.delete_history_item', history_id=item.id) }}">
+                            <button type="submit" class="history-remove" title="Удалить">×</button>
+                        </form>
+                    </div>
                 {% endfor %}
             </div>
         </div>
@@ -46,10 +77,26 @@
         <!-- На этой неделе -->
         {% if grouped.this_week %}
         <div class="history-section">
-            <h3 class="history-date">На этой неделе</h3>
+            <h3 class="history-date">📅 На этой неделе</h3>
             <div class="history-list">
                 {% for item in grouped.this_week %}
-                    {% include 'user/partials/history_item.html' %}
+                    <div class="history-item">
+                        <a href="{{ url_for('video.watch', video_id=item.video.id) }}" class="history-thumb">
+                            <img src="{{ url_for('static', filename='uploads/thumbnails/' + item.video.thumbnail) }}"
+                                 onerror="this.src='{{ url_for('static', filename='img/default_thumb.svg') }}'">
+                        </a>
+                        <div class="history-info">
+                            <a href="{{ url_for('video.watch', video_id=item.video.id) }}" class="history-title">
+                                {{ item.video.mood_emoji() }} {{ item.video.title }}
+                            </a>
+                            <p class="history-meta">
+                                {{ item.video.author.username }} • {{ item.watched_at.strftime('%d.%m') }}
+                            </p>
+                        </div>
+                        <form method="POST" action="{{ url_for('user.delete_history_item', history_id=item.id) }}">
+                            <button type="submit" class="history-remove" title="Удалить">×</button>
+                        </form>
+                    </div>
                 {% endfor %}
             </div>
         </div>
@@ -58,10 +105,26 @@
         <!-- Ранее -->
         {% if grouped.earlier %}
         <div class="history-section">
-            <h3 class="history-date">Ранее</h3>
+            <h3 class="history-date">📅 Ранее</h3>
             <div class="history-list">
                 {% for item in grouped.earlier %}
-                    {% include 'user/partials/history_item.html' %}
+                    <div class="history-item">
+                        <a href="{{ url_for('video.watch', video_id=item.video.id) }}" class="history-thumb">
+                            <img src="{{ url_for('static', filename='uploads/thumbnails/' + item.video.thumbnail) }}"
+                                 onerror="this.src='{{ url_for('static', filename='img/default_thumb.svg') }}'">
+                        </a>
+                        <div class="history-info">
+                            <a href="{{ url_for('video.watch', video_id=item.video.id) }}" class="history-title">
+                                {{ item.video.mood_emoji() }} {{ item.video.title }}
+                            </a>
+                            <p class="history-meta">
+                                {{ item.video.author.username }} • {{ item.watched_at.strftime('%d.%m.%Y') }}
+                            </p>
+                        </div>
+                        <form method="POST" action="{{ url_for('user.delete_history_item', history_id=item.id) }}">
+                            <button type="submit" class="history-remove" title="Удалить">×</button>
+                        </form>
+                    </div>
                 {% endfor %}
             </div>
         </div>
@@ -69,10 +132,10 @@
 
     {% else %}
         <div class="empty-state">
-            <p>📭 История просмотров пуста</p>
-            <p>Смотрите видео, и они появятся здесь!</p>
-            <a href="{{ url_for('main.index') }}" class="btn btn-primary">Найти видео</a>
+            <p>История просмотров пуста</p>
+            <a href="{{ url_for('main.index') }}" class="btn btn-primary">🎬 Смотреть видео</a>
         </div>
     {% endif %}
+
 </div>
 {% endblock %}
