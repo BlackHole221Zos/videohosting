@@ -36,8 +36,12 @@ def register():
         db.session.add(user)
         db.session.commit()
 
-        flash(f'Добро пожаловать, {user.username}! Теперь войдите в аккаунт.', 'success')
-        return redirect(url_for('auth.login'))
+        # Сразу авторизуем пользователя
+        session.clear()
+        session['user_id'] = user.id
+
+        flash(f'Добро пожаловать в VidSphere, {user.username}! 🚀', 'success')
+        return redirect(url_for('main.index'))
 
     return render_template('auth/register.html', form=form)
 
