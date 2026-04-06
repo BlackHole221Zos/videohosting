@@ -2816,3 +2816,111 @@ ul, ol {
     .controls-row { flex-wrap: wrap; }
     .time-display { order: 10; width: 100%; text-align: center; margin: 8px 0 0 0; }
 }
+
+/* ============================================
+   ЮРИДИЧЕСКИЕ СТРАНИЦЫ
+============================================ */
+
+.legal-page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px 100px 20px;
+}
+
+.legal-page h1 {
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    font-size: 1.8rem;
+    text-align: center;
+}
+
+.legal-date {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.legal-actions {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.legal-content {
+    background: var(--bg-card);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 40px;
+}
+
+.legal-content h2 {
+    color: var(--primary);
+    font-size: 1.3rem;
+    margin-top: 40px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--border);
+}
+
+.legal-content h2:first-child {
+    margin-top: 0;
+}
+
+.legal-content p {
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    line-height: 1.8;
+    text-align: justify;
+}
+
+.legal-content ul {
+    margin: 16px 0 24px 0;
+    padding-left: 24px;
+}
+
+.legal-content li {
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    line-height: 1.7;
+    list-style: disc;
+}
+
+.legal-content strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.legal-content a {
+    color: var(--primary);
+    text-decoration: underline;
+}
+
+/* Логотип в Hero */
+.hero-logo {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 16px;
+    filter: drop-shadow(0 0 20px rgba(142, 192, 124, 0.6));
+}
+
+/* Логотип в футере */
+.footer-logo {
+    width: 18px;
+    height: 18px;
+    vertical-align: middle;
+    margin: 0 4px;
+}
+
+@media (max-width: 768px) {
+    .legal-page {
+        padding: 20px 16px 100px 16px;
+    }
+
+    .legal-content {
+        padding: 24px 20px;
+    }
+
+    .legal-page h1 {
+        font-size: 1.4rem;
+    }
+}

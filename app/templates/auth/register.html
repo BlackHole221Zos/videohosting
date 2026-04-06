@@ -1,7 +1,7 @@
 <!-- app/templates/auth/register.html -->
 {% extends "base.html" %}
 
-{% block title %}Регистрация — VidSphere{% endblock %}
+{% block title %}Регистрация — Lampix{% endblock %}
 
 {% block content %}
 <div class="auth-page">
@@ -55,6 +55,7 @@
             </div>
 
             <button type="submit" class="btn btn-primary btn-block">Создать аккаунт</button>
+        </form>
 
         <p class="auth-footer">
             Уже есть аккаунт? <a href="{{ url_for('auth.login') }}">Войдите</a>

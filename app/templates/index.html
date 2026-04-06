@@ -1,7 +1,7 @@
 <!-- app/templates/index.html -->
 {% extends "base.html" %}
 
-{% block title %}VidSphere — Космический видеохостинг{% endblock %}
+{% block title %}Lampix — Ламповый видеохостинг{% endblock %}
 
 {% block content %}
 <div class="home-page">
@@ -31,8 +31,8 @@
                 {% else %}
                     <div class="hero-slide active hero-empty">
                         <div class="hero-overlay">
-                            <span class="hero-mood">🌌</span>
-                            <h2>Добро пожаловать в VidSphere</h2>
+                            <img src="{{ url_for('static', filename='img/logo/favicon.svg') }}" alt="Lampix" class="hero-logo">
+                            <h2>Добро пожаловать в Lampix</h2>
                             <p>Загрузите первое видео!</p>
                         </div>
                     </div>

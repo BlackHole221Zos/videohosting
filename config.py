@@ -10,11 +10,11 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 class Config:
     # Секретный ключ для сессий
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'vidsphere-super-secret-key-2024'
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'lampix-super-secret-key-2025'
 
     # База данных SQLite
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-                              'sqlite:///' + os.path.join(basedir, 'instance', 'vidsphere.db')
+                              'sqlite:///' + os.path.join(basedir, 'instance', 'lampix.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Папка для загрузок
@@ -26,8 +26,6 @@ class Config:
     # Разрешённые расширения
     ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv', 'webm'}
     ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-
-    # ============ НАСТРОЙКИ EMAIL ============
 
     # ============ НАСТРОЙКИ EMAIL ============
 
