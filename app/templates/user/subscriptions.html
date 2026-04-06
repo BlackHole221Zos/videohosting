@@ -52,12 +52,17 @@
                 </a>
 
                 <div class="channel-header-actions">
-                    <form action="{{ url_for('user.unfollow', username=channel.username) }}" method="POST">
-                        <button type="submit" class="subscribe-btn subscribed">
-                            <span class="btn-text-default">✓ Подписан</span>
-                            <span class="btn-text-hover">Отписаться</span>
-                        </button>
-                    </form>
+                    <!-- AJAX кнопка отписки -->
+                    <button
+                        type="button"
+                        class="subscribe-btn subscribed subscribe-ajax-btn"
+                        data-url="{{ url_for('user.unfollow', username=channel.username) }}"
+                        data-username="{{ channel.username }}"
+                    >
+                        <span class="btn-text-default">✓ Подписан</span>
+                        <span class="btn-text-hover">Отписаться</span>
+                    </button>
+
                     <a href="{{ url_for('user.profile', username=channel.username) }}" class="btn btn-outline btn-sm">
                         На канал →
                     </a>
@@ -66,13 +71,13 @@
 
             <!-- Сетка видео -->
             {% if item.recent_videos %}
-            <div class="video-grid">
+            <div class="video-grid-full">
                 {% for video in item.recent_videos %}
                     {% include "partials/video_card.html" %}
                 {% endfor %}
             </div>
             {% else %}
-            <div class="empty">
+            <div class="empty-state">
                 <p>😴 Автор пока не загрузил видео</p>
             </div>
             {% endif %}

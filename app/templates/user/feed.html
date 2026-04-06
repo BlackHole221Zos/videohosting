@@ -14,7 +14,7 @@
     </div>
 
     {% if videos %}
-    <div class="video-grid">
+    <div class="video-grid-full">
         {% for video in videos %}
             {% include "partials/video_card.html" %}
         {% endfor %}
@@ -22,7 +22,7 @@
     {% else %}
     <div class="empty-state">
         <p>📭 Нет новых видео</p>
-        {% if not g.user.following.count() %}
+        {% if user and not user.following.count() %}
             <p>Подпишитесь на авторов, чтобы видеть их видео здесь!</p>
             <a href="{{ url_for('main.index') }}" class="btn btn-primary">Найти авторов</a>
         {% else %}

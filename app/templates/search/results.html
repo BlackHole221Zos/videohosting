@@ -5,44 +5,76 @@
 
 {% block content %}
 <div class="search-page">
-    <h1>🔍 Результаты поиска</h1>
 
-    {% if query %}
-    <p class="search-query">По запросу «{{ query }}» найдено: {{ total }}</p>
-    {% endif %}
+    <!-- Заголовок + фильтры в одну строку -->
+    <div class="search-header">
+        <div class="search-title">
+            <h1>🔍 Поиск</h1>
+            {% if query %}
+                <span class="search-count">«{{ query }}» — {{ total }} результатов</span>
+            {% endif %}
+        </div>
 
-    <!-- Фильтры -->
-    <form class="search-filters" method="GET" action="{{ url_for('search.search') }}">
-        <input type="hidden" name="q" value="{{ query }}">
+        <form class="search-filters-inline" method="GET" action="{{ url_for('search.search') }}">
+            <input type="hidden" name="q" value="{{ query }}">
 
-        <select name="mood" class="form-input form-select" onchange="this.form.submit()">
-            <option value="">Все настроения</option>
-            <option value="laugh" {% if mood_filter == 'laugh' %}selected{% endif %}>😂 Смех</option>
-            <option value="knowledge" {% if mood_filter == 'knowledge' %}selected{% endif %}>🧠 Знания</option>
-            <option value="peace" {% if mood_filter == 'peace' %}selected{% endif %}>🌸 Покой</option>
-            <option value="adrenaline" {% if mood_filter == 'adrenaline' %}selected{% endif %}>⚡ Адреналин</option>
-            <option value="inspiration" {% if mood_filter == 'inspiration' %}selected{% endif %}>✨ Вдохновение</option>
-        </select>
+            <select name="mood" class="filter-select" onchange="this.form.submit()">
+                <option value="">🎭 Все</option>
+                <option value="laugh" {% if mood_filter == 'laugh' %}selected{% endif %}>😂</option>
+                <option value="knowledge" {% if mood_filter == 'knowledge' %}selected{% endif %}>🧠</option>
+                <option value="peace" {% if mood_filter == 'peace' %}selected{% endif %}>🌸</option>
+                <option value="adrenaline" {% if mood_filter == 'adrenaline' %}selected{% endif %}>⚡</option>
+                <option value="inspiration" {% if mood_filter == 'inspiration' %}selected{% endif %}>✨</option>
+            </select>
 
-        <select name="sort" class="form-input form-select" onchange="this.form.submit()">
-            <option value="date" {% if sort_by == 'date' %}selected{% endif %}>По дате</option>
-            <option value="views" {% if sort_by == 'views' %}selected{% endif %}>По просмотрам</option>
-            <option value="karma" {% if sort_by == 'karma' %}selected{% endif %}>По карме</option>
-        </select>
-    </form>
+            <select name="sort" class="filter-select" onchange="this.form.submit()">
+                <option value="date" {% if sort_by == 'date' %}selected{% endif %}>📅 Новые</option>
+                <option value="views" {% if sort_by == 'views' %}selected{% endif %}>👁 Просмотры</option>
+                <option value="karma" {% if sort_by == 'karma' %}selected{% endif %}>🔥 Карма</option>
+            </select>
+        </form>
+    </div>
 
     <!-- Результаты -->
     {% if videos %}
-    <div class="video-grid">
+    <div class="search-results">
         {% for video in videos %}
-            {% include "partials/video_card.html" %}
+        <a href="{{ url_for('video.watch', video_id=video.id) }}" class="search-item">
+            <div class="search-thumb">
+                <img
+                    src="{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}"
+                    onerror="this.src='{{ url_for('static', filename='img/default_thumb.svg') }}'"
+                >
+                <span class="search-mood">{{ video.mood_emoji() }}</span>
+            </div>
+            <div class="search-info">
+                <h3 class="search-video-title">{{ video.title }}</h3>
+                <p class="search-meta">
+                    <span class="search-author">{{ video.author.username }}</span>
+                    <span class="search-stats">
+                        👁 {{ video.views }} • ⚡ {{ video.karma }} • {{ video.created_at.strftime('%d.%m') }}
+                    </span>
+                </p>
+                {% if video.description %}
+                <p class="search-desc">{{ video.description|truncate(100) }}</p>
+                {% endif %}
+                {% if video.tags %}
+                <div class="search-tags">
+                    {% for tag in video.get_tags_list()[:3] %}
+                        <span class="search-tag">#{{ tag }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </a>
         {% endfor %}
     </div>
     {% else %}
-    <div class="empty-state">
+    <div class="empty-state compact">
         <p>😔 Ничего не найдено</p>
-        <p>Попробуйте изменить запрос или фильтры</p>
+        <p>Попробуйте изменить запрос</p>
     </div>
     {% endif %}
+
 </div>
 {% endblock %}
