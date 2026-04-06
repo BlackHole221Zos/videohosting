@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 50">
+  <defs>
+    <linearGradient id="tvGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8ec07c"/>
+      <stop offset="100%" stop-color="#fabd2f"/>
+    </linearGradient>
+    <linearGradient id="tvScreen" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#83a598"/>
+      <stop offset="100%" stop-color="#8ec07c"/>
+    </linearGradient>
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8ec07c"/>
+      <stop offset="100%" stop-color="#fabd2f"/>
+    </linearGradient>
+    <filter id="tvGlow">
+      <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Антенна -->
+  <line x1="13" y1="8" x2="9" y2="2" stroke="url(#tvGrad)" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="23" y1="8" x2="27" y2="2" stroke="url(#tvGrad)" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="9" cy="2" r="1.5" fill="#fabd2f"/>
+  <circle cx="27" cy="2" r="1.5" fill="#fabd2f"/>
+
+  <!-- Корпус -->
+  <rect x="2" y="10" width="36" height="30" rx="4" fill="#282828" stroke="url(#tvGrad)" stroke-width="2"/>
+
+  <!-- Экран -->
+  <rect x="6" y="14" width="24" height="18" rx="2" fill="url(#tvScreen)" opacity="0.9" filter="url(#tvGlow)"/>
+
+  <!-- Сканлайны -->
+  <rect x="6" y="16" width="24" height="0.5" fill="#000" opacity="0.2"/>
+  <rect x="6" y="19" width="24" height="0.5" fill="#000" opacity="0.2"/>
+  <rect x="6" y="22" width="24" height="0.5" fill="#000" opacity="0.2"/>
+  <rect x="6" y="25" width="24" height="0.5" fill="#000" opacity="0.2"/>
+  <rect x="6" y="28" width="24" height="0.5" fill="#000" opacity="0.2"/>
+  <rect x="6" y="31" width="24" height="0.5" fill="#000" opacity="0.2"/>
+
+  <!-- Play -->
+  <polygon points="14,19 14,27 22,23" fill="#fabd2f" opacity="0.8"/>
+
+  <!-- Кнопки -->
+  <circle cx="6" cy="36" r="1.5" fill="url(#tvGrad)"/>
+  <circle cx="11" cy="36" r="1.5" fill="url(#tvGrad)"/>
+  <circle cx="16" cy="36" r="1.5" fill="url(#tvGrad)"/>
+
+  <!-- Ножки -->
+  <rect x="6" y="41" width="7" height="3" rx="1.5" fill="url(#tvGrad)"/>
+  <rect x="23" y="41" width="7" height="3" rx="1.5" fill="url(#tvGrad)"/>
+
+  <!-- Текст -->
+  <text x="46" y="32" font-family="monospace" font-size="22" font-weight="700" fill="url(#textGrad)">VidSphere</text>
+</svg>

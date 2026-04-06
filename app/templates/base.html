@@ -6,10 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}VidSphere{% endblock %}</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo/favicon.svg') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/logo/apple-touch-icon.png') }}">
+    <meta name="theme-color" content="#282828">
 
+    <!-- Мета-теги -->
+    <meta name="description" content="VidSphere — космический видеохостинг нового поколения">
+    <meta name="keywords" content="видео, хостинг, VidSphere, космос">
+    <meta property="og:title" content="VidSphere">
+    <meta property="og:description" content="Космический видеохостинг 🌌">
+    <meta property="og:image" content="{{ url_for('static', filename='img/logo/logo.svg', _external=True) }}">
+    <meta property="og:type" content="website">
+
+    <!-- Локальные шрифты -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
@@ -18,7 +28,7 @@
         <div class="container">
             <nav class="nav">
                 <a href="{{ url_for('main.index') }}" class="logo">
-                    <span class="logo-icon">◈</span>
+                    <img src="{{ url_for('static', filename='img/logo/favicon.svg') }}" alt="VidSphere" class="logo-icon">
                     <span class="logo-text">VidSphere</span>
                 </a>
 
@@ -99,7 +109,7 @@
     <footer class="footer">
         <div class="container">
             <div class="footer-content">
-                <p>© 2026 VidSphere — Космический видеохостинг 🌌</p>
+                <p>© 2025 VidSphere — Космический видеохостинг 🌌</p>
                 <div class="footer-links">
                     <a href="{{ url_for('main.terms') }}">Пользовательское соглашение</a>
                     <a href="{{ url_for('main.privacy') }}">Политика конфиденциальности</a>

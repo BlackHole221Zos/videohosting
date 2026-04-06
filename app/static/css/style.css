@@ -2,6 +2,42 @@
 /* VidSphere — Gruvbox Theme */
 
 /* ============================================
+   ШРИФТЫ (локальные)
+============================================ */
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    src: url('../fonts/JetBrainsMono-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    src: url('../fonts/JetBrainsMono-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    src: url('../fonts/JetBrainsMono-SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    src: url('../fonts/JetBrainsMono-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* ============================================
    ЦВЕТА
 ============================================ */
 
@@ -146,22 +182,46 @@ ul, ol {
     padding: 12px 0;
 }
 
+/* Логотип */
 .logo {
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: var(--primary);
     display: flex;
     align-items: center;
-    gap: 8px;
-}
-
-.logo:hover {
-    color: var(--primary-hover);
-    text-shadow: var(--glow-primary);
+    gap: 10px;
+    text-decoration: none;
 }
 
 .logo-icon {
-    font-size: 1.6rem;
+    width: 40px;
+    height: 40px;
+    transition: all 0.3s ease;
+}
+
+.logo:hover .logo-icon {
+    transform: scale(1.08) translateY(-2px);
+    filter: drop-shadow(0 4px 12px rgba(142, 192, 124, 0.5));
+}
+
+.logo-text {
+    font-size: 1.4rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    transition: all 0.3s ease;
+}
+
+.logo:hover .logo-text {
+    filter: drop-shadow(0 0 8px rgba(142, 192, 124, 0.4));
+}
+
+/* Адаптив для светлой темы */
+[data-theme="light"] .logo:hover .logo-icon {
+    filter: drop-shadow(0 4px 12px rgba(104, 157, 106, 0.5));
+}
+
+[data-theme="light"] .logo:hover .logo-text {
+    filter: drop-shadow(0 0 8px rgba(104, 157, 106, 0.4));
 }
 
 
