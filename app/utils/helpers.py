@@ -1,9 +1,13 @@
 # app/utils/helpers.py
 
 import os
-import uuid
-from werkzeug.utils import secure_filename
+import secrets
+import uuid  # 🆕 ДОБАВИЛ
+import cv2
+from PIL import Image
 from flask import current_app
+from werkzeug.utils import secure_filename
+from app.utils.video_converter import convert_video
 
 # ============ РАЗРЕШЁННЫЕ РАСШИРЕНИЯ ============
 
@@ -30,24 +34,72 @@ def generate_unique_filename(original_filename):
 
 def save_video(video_file):
     """
-    Сохраняет видео файл.
-    Возвращает имя сохранённого файла или None при ошибке.
+    Сохраняет видео с конвертацией в MP4 (H.264)
+
+    Args:
+        video_file: файл из формы (FileStorage)
+
+    Returns:
+        str: имя сохранённого файла или None
     """
     if not video_file:
         return None
 
-    if not allowed_file(video_file.filename, ALLOWED_VIDEO):
+    # Генерируем уникальное имя
+    random_hex = secrets.token_hex(16)
+    _, file_ext = os.path.splitext(video_file.filename)
+
+    # Временное имя для оригинала
+    temp_filename = f'temp_{random_hex}{file_ext}'
+    temp_filepath = os.path.join(
+        current_app.config['UPLOAD_FOLDER'],
+        'videos',
+        temp_filename
+    )
+
+    # Итоговое имя (всегда .mp4)
+    final_filename = f'{random_hex}.mp4'
+    final_filepath = os.path.join(
+        current_app.config['UPLOAD_FOLDER'],
+        'videos',
+        final_filename
+    )
+
+    try:
+        # Сохраняем оригинал временно
+        video_file.save(temp_filepath)
+
+        # Конвертируем в MP4 (H.264)
+        current_app.logger.info(f'Converting video: {temp_filename} -> {final_filename}')
+
+        success = convert_video(
+            input_path=temp_filepath,
+            output_path=final_filepath,
+            max_resolution=1080,  # Сжимаем до 1080p
+            crf=23  # Качество (18-28)
+        )
+
+        if not success:
+            # Если конвертация не удалась — используем оригинал
+            current_app.logger.warning('Conversion failed, using original file')
+            os.rename(temp_filepath, final_filepath)
+        else:
+            # Удаляем временный файл
+            if os.path.exists(temp_filepath):
+                os.remove(temp_filepath)
+
+        return final_filename
+
+    except Exception as e:
+        current_app.logger.error(f'Error saving video: {str(e)}')
+
+        # Удаляем временные файлы при ошибке
+        if os.path.exists(temp_filepath):
+            os.remove(temp_filepath)
+        if os.path.exists(final_filepath):
+            os.remove(final_filepath)
+
         return None
-
-    filename = generate_unique_filename(video_file.filename)
-    upload_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], 'videos')
-
-    os.makedirs(upload_folder, exist_ok=True)
-
-    filepath = os.path.join(upload_folder, filename)
-    video_file.save(filepath)
-
-    return filename
 
 
 # ============ ГЕНЕРАЦИЯ ПРЕВЬЮ ============
@@ -58,8 +110,6 @@ def generate_thumbnail(video_filename):
     Возвращает имя файла превью или 'default_thumb.jpg' при ошибке.
     """
     try:
-        import cv2
-
         video_path = os.path.join(
             current_app.config['UPLOAD_FOLDER'],
             'videos',
@@ -89,7 +139,7 @@ def generate_thumbnail(video_filename):
         return thumb_filename
 
     except Exception as e:
-        print(f"Ошибка генерации превью: {e}")
+        current_app.logger.error(f"Ошибка генерации превью: {e}")
         return 'default_thumb.jpg'
 
 
@@ -162,6 +212,6 @@ def delete_file(filename, folder):
             os.remove(filepath)
             return True
     except Exception as e:
-        print(f"Ошибка удаления файла: {e}")
+        current_app.logger.error(f"Ошибка удаления файла: {e}")
 
     return False

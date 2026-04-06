@@ -14,7 +14,8 @@ document.addEventListener('DOMContentLoaded', function() {
     initThumbnailChoice();
     initCopyLink();
     initGlitchEffects();
-    initCustomPlayer();  // ← ИСПРАВЛЕНО: добавлены скобки ()
+    initCustomPlayer();
+    initVideoUploadProgress();
 });
 
 // ============================================
@@ -758,4 +759,34 @@ function showToast(message, type) {
         toast.classList.remove('show');
         setTimeout(function() { toast.remove(); }, 300);
     }, 3000);
+}
+
+// ============================================
+// ИНДИКАТОР ЗАГРУЗКИ ВИДЕО
+// ============================================
+function initVideoUploadProgress() {
+    var uploadForm = document.getElementById('uploadForm');
+    var uploadBtn = document.getElementById('uploadBtn');
+    var progressDiv = document.getElementById('upload-progress');
+
+    if (!uploadForm || !uploadBtn || !progressDiv) return;
+
+    uploadForm.addEventListener('submit', function(e) {
+        // Проверяем что файл выбран
+        var videoInput = document.getElementById('videoInput');
+
+        if (videoInput && videoInput.files.length > 0) {
+            // Показываем индикатор
+            progressDiv.style.display = 'block';
+
+            // Блокируем кнопку
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = '⏳ Загрузка...';
+
+            // Прокручиваем к индикатору
+            setTimeout(function() {
+                progressDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
+    });
 }

@@ -1,14 +1,14 @@
 <!-- app/templates/video/upload.html -->
 {% extends "base.html" %}
 
-{% block title %}Загрузить видео — VidSphere{% endblock %}
+{% block title %}Загрузить видео — Lampix{% endblock %}
 
 {% block content %}
 <div class="upload-page">
     <div class="upload-card">
         <h1>📤 Загрузить видео</h1>
 
-        <form method="POST" enctype="multipart/form-data" class="upload-form">
+        <form method="POST" enctype="multipart/form-data" class="upload-form" id="uploadForm">
             {{ form.hidden_tag() }}
 
             <div class="form-group">
@@ -109,7 +109,15 @@
                 {% endif %}
             </div>
 
-            <button type="submit" class="btn btn-primary btn-block">🚀 Загрузить</button>
+            <button type="submit" class="btn btn-primary btn-block" id="uploadBtn">🚀 Загрузить</button>
+
+            <!-- 🆕 ИНДИКАТОР ЗАГРУЗКИ/КОНВЕРТАЦИИ -->
+            <div id="upload-progress" style="display: none; margin-top: 20px;">
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+                <p class="progress-text">⚙️ Загрузка и конвертация видео... Пожалуйста, подождите</p>
+            </div>
         </form>
     </div>
 </div>
