@@ -1,8 +1,31 @@
 # app/utils/video_converter.py
 
 import os
+import sys
 import ffmpeg
 from flask import current_app
+
+
+def get_ffmpeg_path():
+    """Возвращает путь к FFmpeg (портативный или системный)"""
+    # Проверяем портативную версию в корне проекта
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    portable_ffmpeg = os.path.join(project_root, 'ffmpeg', 'ffmpeg.exe')
+
+    if os.path.exists(portable_ffmpeg):
+        return os.path.dirname(portable_ffmpeg)
+
+    # Иначе используем системный FFmpeg
+    return None
+
+
+# Устанавливаем путь к FFmpeg при импорте модуля
+ffmpeg_path = get_ffmpeg_path()
+if ffmpeg_path:
+    os.environ["PATH"] = ffmpeg_path + os.pathsep + os.environ.get("PATH", "")
+    print(f"✅ Используется портативный FFmpeg: {ffmpeg_path}")
+else:
+    print("⚙️ Используется системный FFmpeg")
 
 
 def convert_video(input_path, output_path, max_resolution=1080, crf=23):
@@ -81,7 +104,6 @@ def get_video_duration(video_path):
     """
     try:
         probe = ffmpeg.probe(video_path)
-        video_info = next(s for s in probe['streams'] if s['codec_type'] == 'video')
         duration = float(probe['format']['duration'])
         return duration
     except:
