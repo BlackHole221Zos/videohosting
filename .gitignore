@@ -239,23 +239,25 @@ fabric.properties
 *.db
 *.sqlite
 *.sqlite3
-instance/*.db
+
+# Игнорируем содержимое instance, но сохраняем папку
+instance/*
+!instance/.gitkeep
 
 
 # ============================================
 #   ЗАГРУЖЕННЫЕ ФАЙЛЫ (UPLOADS)
 # ============================================
 
-# Все загруженные файлы (кроме default заглушек)
+# Все загруженные файлы
 app/static/uploads/videos/*
 app/static/uploads/thumbnails/*
 app/static/uploads/avatars/*
 
-# Сохраняем только default файлы
+# Сохраняем .gitkeep чтобы папки создавались
 !app/static/uploads/videos/.gitkeep
 !app/static/uploads/thumbnails/.gitkeep
 !app/static/uploads/avatars/.gitkeep
-
 
 # ============================================
 #   FFMPEG ПОРТАТИВНЫЙ
