@@ -3,11 +3,6 @@
 
 > Платформа для загрузки и просмотра видео в терминальном стиле с уникальной системой настроений и кармы.
 
-![Python](https://img.shields.io/badge/Python-3.9+-blue?style=flat-square)
-![Flask](https://img.shields.io/badge/Flask-3.1.3-black?style=flat-square)
-![FFmpeg](https://img.shields.io/badge/FFmpeg-8.1-green?style=flat-square)
-![SQLite](https://img.shields.io/badge/SQLite-3-blue?style=flat-square)
-
 ## Что это такое?
 
 Lampix — это видеохостинг похожий на YouTube, но с несколькими отличиями:
