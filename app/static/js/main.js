@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', function() {
     initVideoUploadProgress();
     initDeleteComment();
     initQualitySelector();
+    initCommentReactions();
+    initCommentReplies();
+    initDeleteReply();
 });
 
 // ============================================
@@ -66,11 +69,9 @@ function initHeroCarousel() {
     function goToSlide(index) {
         slides.forEach(function(slide) { slide.classList.remove('active'); });
         dots.forEach(function(dot) { dot.classList.remove('active'); });
-
         currentIndex = index;
         if (currentIndex >= slides.length) currentIndex = 0;
         if (currentIndex < 0) currentIndex = slides.length - 1;
-
         slides[currentIndex].classList.add('active');
         if (dots[currentIndex]) dots[currentIndex].classList.add('active');
     }
@@ -185,7 +186,7 @@ function initSubscriptionsCarousel() {
 }
 
 // ============================================
-// AJAX РЕАКЦИИ
+// AJAX РЕАКЦИИ НА ВИДЕО
 // ============================================
 function initReactions() {
     var btns = document.querySelectorAll('.reaction-ajax-btn');
@@ -229,7 +230,7 @@ function initCommentForm() {
     form.addEventListener('submit', function(e) {
         e.preventDefault();
 
-        var input = form.querySelector('textarea') || form.querySelector('.terminal-input') || form.querySelector('.comment-input') || form.querySelector('input[type="text"]');
+        var input = form.querySelector('.comment-input') || form.querySelector('textarea') || form.querySelector('input[type="text"]');
         if (!input) return;
 
         var text = input.value.trim();
@@ -247,7 +248,6 @@ function initCommentForm() {
                 addCommentToList(data.comment);
                 input.value = '';
                 showToast('Комментарий добавлен!', 'success');
-
                 var countEl = document.getElementById('comments-count');
                 if (countEl) {
                     countEl.textContent = parseInt(countEl.textContent || 0) + 1;
@@ -265,13 +265,19 @@ function addCommentToList(comment) {
     var list = document.getElementById('comments-list');
     if (!list) return;
 
-    var empty = list.querySelector('.empty') || list.querySelector('.empty-hint') || list.querySelector('.no-comments');
+    var empty = list.querySelector('.empty-hint');
     if (empty) empty.remove();
 
-    var html = '<div class="comment comment-new">' +
-        '<span class="c-author">' + escapeHtml(comment.author.username) + ':</span>' +
+    var html = '<div class="comment-block comment-new" id="comment-' + comment.id + '">' +
+        '<div class="comment">' +
+        '<div class="comment-body">' +
+        '<div class="comment-header">' +
+        '<span class="c-author">' + escapeHtml(comment.author.username) + '</span>' +
+        '</div>' +
         '<span class="c-text">' + escapeHtml(comment.text) + '</span>' +
-    '</div>';
+        '</div>' +
+        '</div>' +
+        '</div>';
 
     list.insertAdjacentHTML('afterbegin', html);
 
@@ -413,14 +419,13 @@ function initGlitchEffects() {
 }
 
 // ============================================
-// 🎬 КАСТОМНЫЙ ВИДЕО ПЛЕЕР (ИСПРАВЛЕННЫЙ)
+// КАСТОМНЫЙ ВИДЕО ПЛЕЕР
 // ============================================
 function initCustomPlayer() {
     var player = document.getElementById('customPlayer');
     var video = document.getElementById('videoElement');
     if (!player || !video) return;
 
-    // Элементы управления
     var playPauseBtn = document.getElementById('playPauseBtn');
     var bigPlayBtn = document.getElementById('bigPlayBtn');
     var stopBtn = document.getElementById('stopBtn');
@@ -438,8 +443,9 @@ function initCustomPlayer() {
     var speedMenu = document.getElementById('speedMenu');
     var pipBtn = document.getElementById('pipBtn');
     var fullscreenBtn = document.getElementById('fullscreenBtn');
+    var wideBtn = document.getElementById('wideBtn');
+    var watchContainer = document.querySelector('.watch-compact');
 
-    // Форматирование времени
     function formatTime(seconds) {
         if (isNaN(seconds)) return '0:00';
         var mins = Math.floor(seconds / 60);
@@ -447,38 +453,21 @@ function initCustomPlayer() {
         return mins + ':' + (secs < 10 ? '0' : '') + secs;
     }
 
-    // ========== PLAY / PAUSE ==========
     function togglePlay() {
-        if (video.paused) {
-            video.play();
-        } else {
-            video.pause();
-        }
+        if (video.paused) { video.play(); } else { video.pause(); }
     }
 
     if (playPauseBtn) playPauseBtn.addEventListener('click', togglePlay);
     if (bigPlayBtn) bigPlayBtn.addEventListener('click', togglePlay);
 
     video.addEventListener('click', function(e) {
-        // Не переключаем при клике на контролы
-        if (e.target === video) {
-            togglePlay();
-        }
+        if (e.target === video) togglePlay();
     });
 
-    video.addEventListener('play', function() {
-        player.classList.add('playing');
-    });
+    video.addEventListener('play', function() { player.classList.add('playing'); });
+    video.addEventListener('pause', function() { player.classList.remove('playing'); });
+    video.addEventListener('ended', function() { player.classList.remove('playing'); });
 
-    video.addEventListener('pause', function() {
-        player.classList.remove('playing');
-    });
-
-    video.addEventListener('ended', function() {
-        player.classList.remove('playing');
-    });
-
-    // ========== STOP ==========
     if (stopBtn) {
         stopBtn.addEventListener('click', function() {
             video.pause();
@@ -487,7 +476,6 @@ function initCustomPlayer() {
         });
     }
 
-    // ========== ПЕРЕМОТКА ==========
     if (rewindBtn) {
         rewindBtn.addEventListener('click', function() {
             video.currentTime = Math.max(0, video.currentTime - 10);
@@ -500,7 +488,6 @@ function initCustomPlayer() {
         });
     }
 
-    // ========== ГРОМКОСТЬ ==========
     if (muteBtn) {
         muteBtn.addEventListener('click', function() {
             video.muted = !video.muted;
@@ -517,15 +504,11 @@ function initCustomPlayer() {
         });
     }
 
-    // ========== ПРОГРЕСС ==========
     video.addEventListener('timeupdate', function() {
         if (progressBar && video.duration) {
-            var percent = (video.currentTime / video.duration) * 100;
-            progressBar.style.width = percent + '%';
+            progressBar.style.width = (video.currentTime / video.duration) * 100 + '%';
         }
-        if (currentTimeEl) {
-            currentTimeEl.textContent = formatTime(video.currentTime);
-        }
+        if (currentTimeEl) currentTimeEl.textContent = formatTime(video.currentTime);
     });
 
     video.addEventListener('loadedmetadata', function() {
@@ -535,31 +518,26 @@ function initCustomPlayer() {
     video.addEventListener('progress', function() {
         if (progressBuffered && video.buffered.length > 0) {
             var buffered = video.buffered.end(video.buffered.length - 1);
-            var percent = (buffered / video.duration) * 100;
-            progressBuffered.style.width = percent + '%';
+            progressBuffered.style.width = (buffered / video.duration) * 100 + '%';
         }
     });
 
-    // Клик по прогресс-бару
     if (progressWrap) {
         progressWrap.addEventListener('click', function(e) {
             var rect = this.getBoundingClientRect();
-            var percent = (e.clientX - rect.left) / rect.width;
-            video.currentTime = percent * video.duration;
+            video.currentTime = ((e.clientX - rect.left) / rect.width) * video.duration;
         });
 
         progressWrap.addEventListener('mousemove', function(e) {
             if (progressTooltip && video.duration) {
                 var rect = this.getBoundingClientRect();
-                var percent = (e.clientX - rect.left) / rect.width;
-                var time = percent * video.duration;
+                var time = ((e.clientX - rect.left) / rect.width) * video.duration;
                 progressTooltip.textContent = formatTime(time);
                 progressTooltip.style.left = (e.clientX - rect.left) + 'px';
             }
         });
     }
 
-    // ========== СКОРОСТЬ ==========
     if (speedMenu) {
         var speedBtns = speedMenu.querySelectorAll('button');
         speedBtns.forEach(function(btn) {
@@ -574,20 +552,15 @@ function initCustomPlayer() {
         });
     }
 
-    // ========== PICTURE-IN-PICTURE ==========
     if (pipBtn) {
-        // Проверяем поддержку PiP
         if (!('pictureInPictureEnabled' in document) || !document.pictureInPictureEnabled) {
             pipBtn.style.display = 'none';
         } else {
             pipBtn.addEventListener('click', function() {
                 if (document.pictureInPictureElement) {
-                    document.exitPictureInPicture().catch(function(err) {
-                        console.log('PiP exit error:', err);
-                    });
+                    document.exitPictureInPicture().catch(function(err) { console.log(err); });
                 } else {
                     video.requestPictureInPicture().catch(function(err) {
-                        console.log('PiP error:', err);
                         showToast('PiP не поддерживается', 'warning');
                     });
                 }
@@ -595,62 +568,29 @@ function initCustomPlayer() {
         }
     }
 
-    // ========== FULLSCREEN (ИСПРАВЛЕННЫЙ) ==========
     function toggleFullscreen() {
-        var isFullscreen = document.fullscreenElement ||
-                          document.webkitFullscreenElement ||
-                          document.mozFullScreenElement ||
-                          document.msFullscreenElement;
-
-        if (!isFullscreen) {
-            // Входим в fullscreen
-            var elem = player;
-            if (elem.requestFullscreen) {
-                elem.requestFullscreen();
-            } else if (elem.webkitRequestFullscreen) {
-                elem.webkitRequestFullscreen();
-            } else if (elem.mozRequestFullScreen) {
-                elem.mozRequestFullScreen();
-            } else if (elem.msRequestFullscreen) {
-                elem.msRequestFullscreen();
-            }
+        var isFs = document.fullscreenElement || document.webkitFullscreenElement ||
+                   document.mozFullScreenElement || document.msFullscreenElement;
+        if (!isFs) {
+            if (player.requestFullscreen) player.requestFullscreen();
+            else if (player.webkitRequestFullscreen) player.webkitRequestFullscreen();
+            else if (player.mozRequestFullScreen) player.mozRequestFullScreen();
+            else if (player.msRequestFullscreen) player.msRequestFullscreen();
         } else {
-            // Выходим из fullscreen
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            } else if (document.mozCancelFullScreen) {
-                document.mozCancelFullScreen();
-            } else if (document.msExitFullscreen) {
-                document.msExitFullscreen();
-            }
+            if (document.exitFullscreen) document.exitFullscreen();
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+            else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+            else if (document.msExitFullscreen) document.msExitFullscreen();
         }
     }
 
-    if (fullscreenBtn) {
-        fullscreenBtn.addEventListener('click', function() {
-            toggleFullscreen();
-        });
-    }
+    if (fullscreenBtn) fullscreenBtn.addEventListener('click', toggleFullscreen);
+    video.addEventListener('dblclick', toggleFullscreen);
 
-    // Двойной клик — fullscreen
-    video.addEventListener('dblclick', function() {
-        toggleFullscreen();
-    });
-
-    // Обработка изменения fullscreen
     function onFullscreenChange() {
-        var isFullscreen = document.fullscreenElement ||
-                          document.webkitFullscreenElement ||
-                          document.mozFullScreenElement ||
-                          document.msFullscreenElement;
-
-        if (isFullscreen) {
-            player.classList.add('fullscreen');
-        } else {
-            player.classList.remove('fullscreen');
-        }
+        var isFs = document.fullscreenElement || document.webkitFullscreenElement ||
+                   document.mozFullScreenElement || document.msFullscreenElement;
+        player.classList.toggle('fullscreen', !!isFs);
     }
 
     document.addEventListener('fullscreenchange', onFullscreenChange);
@@ -658,89 +598,40 @@ function initCustomPlayer() {
     document.addEventListener('mozfullscreenchange', onFullscreenChange);
     document.addEventListener('MSFullscreenChange', onFullscreenChange);
 
-// ========== ШИРОКИЙ РЕЖИМ ==========
-var wideBtn = document.getElementById('wideBtn');
-var watchContainer = document.querySelector('.watch-compact');
+    if (wideBtn && watchContainer) {
+        wideBtn.addEventListener('click', function() {
+            watchContainer.classList.toggle('wide-mode');
+            this.classList.toggle('active');
+            this.textContent = watchContainer.classList.contains('wide-mode') ? '⬄' : '⬌';
+            this.title = watchContainer.classList.contains('wide-mode') ? 'Обычный режим' : 'Широкий режим';
+        });
+    }
 
-if (wideBtn && watchContainer) {
-    wideBtn.addEventListener('click', function() {
-        watchContainer.classList.toggle('wide-mode');
-        this.classList.toggle('active');
-
-        if (watchContainer.classList.contains('wide-mode')) {
-            this.textContent = '⬄';
-            this.title = 'Обычный режим';
-        } else {
-            this.textContent = '⬌';
-            this.title = 'Широкий режим';
-        }
-    });
-}
-    // ========== ЗАГРУЗКА ==========
-    video.addEventListener('waiting', function() {
-        player.classList.add('loading');
-    });
-
-    video.addEventListener('canplay', function() {
-        player.classList.remove('loading');
-    });
-
+    video.addEventListener('waiting', function() { player.classList.add('loading'); });
+    video.addEventListener('canplay', function() { player.classList.remove('loading'); });
     video.addEventListener('error', function() {
         player.classList.remove('loading');
         showToast('Ошибка загрузки видео', 'danger');
     });
 
-    // ========== ГОРЯЧИЕ КЛАВИШИ ==========
     document.addEventListener('keydown', function(e) {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
         if (!document.getElementById('customPlayer')) return;
 
         switch(e.code) {
-            case 'Space':
-                e.preventDefault();
-                togglePlay();
-                break;
-            case 'ArrowLeft':
-                e.preventDefault();
-                video.currentTime = Math.max(0, video.currentTime - 5);
-                break;
-            case 'ArrowRight':
-                e.preventDefault();
-                video.currentTime = Math.min(video.duration || 0, video.currentTime + 5);
-                break;
-            case 'ArrowUp':
-                e.preventDefault();
-                video.volume = Math.min(1, video.volume + 0.1);
-                if (volumeSlider) volumeSlider.value = video.volume * 100;
-                break;
-            case 'ArrowDown':
-                e.preventDefault();
-                video.volume = Math.max(0, video.volume - 0.1);
-                if (volumeSlider) volumeSlider.value = video.volume * 100;
-                break;
-            case 'KeyM':
-                video.muted = !video.muted;
-                player.classList.toggle('muted', video.muted);
-                if (volumeSlider) volumeSlider.value = video.muted ? 0 : video.volume * 100;
-                break;
-            case 'KeyF':
-                toggleFullscreen();
-                break;
-                case 'KeyW':
-    if (wideBtn) wideBtn.click();
-    break;
-            case 'Escape':
-                if (document.fullscreenElement) {
-                    document.exitFullscreen();
-                }
-                break;
+            case 'Space': e.preventDefault(); togglePlay(); break;
+            case 'ArrowLeft': e.preventDefault(); video.currentTime = Math.max(0, video.currentTime - 5); break;
+            case 'ArrowRight': e.preventDefault(); video.currentTime = Math.min(video.duration || 0, video.currentTime + 5); break;
+            case 'ArrowUp': e.preventDefault(); video.volume = Math.min(1, video.volume + 0.1); if (volumeSlider) volumeSlider.value = video.volume * 100; break;
+            case 'ArrowDown': e.preventDefault(); video.volume = Math.max(0, video.volume - 0.1); if (volumeSlider) volumeSlider.value = video.volume * 100; break;
+            case 'KeyM': video.muted = !video.muted; player.classList.toggle('muted', video.muted); if (volumeSlider) volumeSlider.value = video.muted ? 0 : video.volume * 100; break;
+            case 'KeyF': toggleFullscreen(); break;
+            case 'KeyW': if (wideBtn) wideBtn.click(); break;
+            case 'Escape': if (document.fullscreenElement) document.exitFullscreen(); break;
         }
     });
 
-    // ========== АВТОВОСПРОИЗВЕДЕНИЕ ==========
-    video.play().catch(function() {
-        player.classList.remove('playing');
-    });
+    video.play().catch(function() { player.classList.remove('playing'); });
 }
 
 // ============================================
@@ -756,7 +647,6 @@ function showToast(message, type) {
     document.body.appendChild(toast);
 
     setTimeout(function() { toast.classList.add('show'); }, 10);
-
     setTimeout(function() {
         toast.classList.remove('show');
         setTimeout(function() { toast.remove(); }, 300);
@@ -775,12 +665,10 @@ function initVideoUploadProgress() {
 
     uploadForm.addEventListener('submit', function(e) {
         var videoInput = document.getElementById('videoInput');
-
         if (videoInput && videoInput.files.length > 0) {
             progressDiv.style.display = 'block';
             uploadBtn.disabled = true;
             uploadBtn.textContent = '⏳ Загрузка...';
-
             setTimeout(function() {
                 progressDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }, 100);
@@ -803,10 +691,7 @@ function initDeleteComment() {
 
         fetch(url, {
             method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Content-Type': 'application/json'
-            }
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' }
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {
@@ -816,18 +701,13 @@ function initDeleteComment() {
                     comment.classList.add('deleting');
                     setTimeout(function() {
                         comment.remove();
-
                         var countEl = document.getElementById('comments-count');
-                        if (countEl) {
-                            countEl.textContent = parseInt(countEl.textContent) - 1;
-                        }
-
+                        if (countEl) countEl.textContent = parseInt(countEl.textContent) - 1;
                         var list = document.getElementById('comments-list');
                         if (list && list.children.length === 0) {
                             list.innerHTML = '<p class="empty-hint">// Пусто</p>';
                         }
                     }, 300);
-
                     showToast('Комментарий удалён', 'info');
                 }
             } else {
@@ -839,8 +719,9 @@ function initDeleteComment() {
             showToast('Ошибка', 'danger');
         });
     });
+}
 
-    // ============================================
+// ============================================
 // ВЫБОР КАЧЕСТВА ВИДЕО
 // ============================================
 function initQualitySelector() {
@@ -852,7 +733,6 @@ function initQualitySelector() {
 
     var qualityBtns = qualityMenu.querySelectorAll('button');
 
-    // Устанавливаем первое качество как активное
     if (qualityBtns.length > 0) {
         qualityBtns[0].classList.add('active');
         qualityBtn.textContent = '⚙️ ' + qualityBtns[0].dataset.quality;
@@ -864,29 +744,178 @@ function initQualitySelector() {
 
             var quality = this.dataset.quality;
             var url = this.dataset.url;
-
-            // Запоминаем текущее время
             var currentTime = video.currentTime;
             var wasPlaying = !video.paused;
 
-            // Меняем источник
             video.src = url;
             video.load();
 
-            // Восстанавливаем позицию
             video.addEventListener('loadedmetadata', function() {
                 video.currentTime = currentTime;
-                if (wasPlaying) {
-                    video.play();
-                }
+                if (wasPlaying) video.play();
             }, { once: true });
 
-            // Обновляем UI
             qualityBtns.forEach(function(b) { b.classList.remove('active'); });
             btn.classList.add('active');
             qualityBtn.textContent = '⚙️ ' + quality;
-
             showToast('Качество: ' + quality, 'info');
+        });
+    });
+}
+
+// ============================================
+// РЕАКЦИИ НА КОММЕНТАРИИ
+// ============================================
+function initCommentReactions() {
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.comment-react-btn');
+        if (!btn) return;
+        e.preventDefault();
+
+        var url = btn.dataset.url;
+        var commentId = btn.dataset.commentId;
+
+        fetch(url, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                var block = document.getElementById('comment-' + commentId);
+                if (!block) return;
+
+                var likeBtn = block.querySelector('.like-btn');
+                var dislikeBtn = block.querySelector('.dislike-btn');
+
+                if (likeBtn) {
+                    likeBtn.classList.remove('active');
+                    likeBtn.querySelector('.like-count').textContent = data.likes;
+                }
+                if (dislikeBtn) {
+                    dislikeBtn.classList.remove('active');
+                    dislikeBtn.querySelector('.dislike-count').textContent = data.dislikes;
+                }
+
+                if (data.user_reaction === 'like' && likeBtn) likeBtn.classList.add('active');
+                else if (data.user_reaction === 'dislike' && dislikeBtn) dislikeBtn.classList.add('active');
+            }
+        })
+        .catch(function(err) { console.error(err); });
+    });
+}
+
+// ============================================
+// ОТВЕТЫ НА КОММЕНТАРИИ
+// ============================================
+function initCommentReplies() {
+    // Показать/скрыть форму ответа
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.comment-reply-toggle');
+        if (!btn) return;
+
+        var commentId = btn.dataset.commentId;
+        var formWrap = document.getElementById('reply-form-' + commentId);
+
+        if (formWrap) {
+            var isVisible = formWrap.style.display !== 'none';
+            formWrap.style.display = isVisible ? 'none' : 'block';
+            if (!isVisible) {
+                var input = formWrap.querySelector('.reply-input');
+                if (input) input.focus();
+            }
+        }
+    });
+
+    // Отправка ответа
+    document.addEventListener('submit', function(e) {
+        var form = e.target.closest('.reply-form');
+        if (!form) return;
+        e.preventDefault();
+
+        if (!form.dataset.commentId) return;
+
+        var input = form.querySelector('.reply-input');
+        var text = input ? input.value.trim() : '';
+        var url = form.dataset.url;
+        var commentId = form.dataset.commentId;
+
+        if (!text) return;
+
+        fetch(url, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                var repliesList = document.getElementById('replies-' + commentId);
+                if (repliesList) {
+                    var html = '<div class="reply" id="reply-' + data.reply.id + '">' +
+                        '<div class="comment-body">' +
+                        '<div class="comment-header">' +
+                        '<span class="c-author">' + escapeHtml(data.reply.author.username) + '</span>' +
+                        '<span class="c-date">' + data.reply.created_at + '</span>' +
+                        '</div>' +
+                        '<span class="c-text">' + escapeHtml(data.reply.text) + '</span>' +
+                        '</div>' +
+                        '</div>';
+                    repliesList.insertAdjacentHTML('beforeend', html);
+                }
+
+                if (input) input.value = '';
+                var formWrap = document.getElementById('reply-form-' + commentId);
+                if (formWrap) formWrap.style.display = 'none';
+
+                var toggleBtn = document.querySelector('.comment-reply-toggle[data-comment-id="' + commentId + '"]');
+                if (toggleBtn) {
+                    var count = repliesList ? repliesList.children.length : 1;
+                    toggleBtn.textContent = '💬 Ответить (' + count + ')';
+                }
+
+                showToast('Ответ добавлен!', 'success');
+            }
+        })
+        .catch(function(err) {
+            console.error(err);
+            showToast('Ошибка отправки', 'danger');
+        });
+    });
+}
+
+// ============================================
+// УДАЛЕНИЕ ОТВЕТА
+// ============================================
+function initDeleteReply() {
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.btn-delete-reply');
+        if (!btn) return;
+        e.preventDefault();
+
+        if (!confirm('Удалить ответ?')) return;
+
+        var url = btn.dataset.url;
+        var replyId = btn.dataset.replyId;
+
+        fetch(url, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                var reply = document.getElementById('reply-' + data.reply_id);
+                if (reply) {
+                    reply.classList.add('deleting');
+                    setTimeout(function() { reply.remove(); }, 300);
+                }
+                showToast('Ответ удалён', 'info');
+            }
+        })
+        .catch(function(err) {
+            console.error(err);
+            showToast('Ошибка', 'danger');
         });
     });
 }

@@ -300,3 +300,117 @@ def delete_comment(video_id, comment_id):
 
     flash('Комментарий удалён', 'info')
     return redirect(url_for('video.watch', video_id=video_id))
+
+# ============ РЕАКЦИЯ НА КОММЕНТАРИЙ (AJAX) ============
+
+@video_bp.route('/video/<int:video_id>/comment/<int:comment_id>/react/<reaction_type>', methods=['POST'])
+@login_required
+def react_comment(video_id, comment_id, reaction_type):
+    """Реакция на комментарий (AJAX)"""
+    from app.models import CommentReaction
+
+    if reaction_type not in ['like', 'dislike']:
+        return jsonify({'error': 'Invalid reaction'}), 400
+
+    comment = Comment.query.get_or_404(comment_id)
+
+    existing = CommentReaction.query.filter_by(
+        user_id=g.user.id,
+        comment_id=comment_id
+    ).first()
+
+    new_reaction = None
+
+    if existing:
+        if existing.reaction_type == reaction_type:
+            db.session.delete(existing)
+            new_reaction = None
+        else:
+            existing.reaction_type = reaction_type
+            new_reaction = reaction_type
+    else:
+        reaction = CommentReaction(
+            reaction_type=reaction_type,
+            user_id=g.user.id,
+            comment_id=comment_id
+        )
+        db.session.add(reaction)
+        new_reaction = reaction_type
+
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'user_reaction': new_reaction,
+        'likes': comment.likes_count(),
+        'dislikes': comment.dislikes_count()
+    })
+
+
+# ============ ОТВЕТ НА КОММЕНТАРИЙ (AJAX) ============
+
+@video_bp.route('/video/<int:video_id>/comment/<int:comment_id>/reply', methods=['POST'])
+@login_required
+def add_reply(video_id, comment_id):
+    """Добавить ответ на комментарий (AJAX)"""
+    from app.models import CommentReply
+
+    comment = Comment.query.get_or_404(comment_id)
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        text = request.json.get('text', '').strip()
+
+        if not text:
+            return jsonify({'error': 'Ответ не может быть пустым'}), 400
+
+        if len(text) > 500:
+            return jsonify({'error': 'Ответ слишком длинный'}), 400
+
+        reply = CommentReply(
+            text=text,
+            user_id=g.user.id,
+            comment_id=comment_id
+        )
+        db.session.add(reply)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'reply': {
+                'id': reply.id,
+                'text': reply.text,
+                'author': {
+                    'username': g.user.username,
+                    'avatar': g.user.avatar
+                },
+                'created_at': reply.created_at.strftime('%d.%m.%Y %H:%M')
+            }
+        })
+
+    return jsonify({'error': 'Bad request'}), 400
+
+
+# ============ УДАЛЕНИЕ ОТВЕТА (AJAX) ============
+
+@video_bp.route('/video/<int:video_id>/comment/<int:comment_id>/reply/<int:reply_id>/delete', methods=['POST'])
+@login_required
+def delete_reply(video_id, comment_id, reply_id):
+    """Удаление ответа на комментарий (AJAX)"""
+    from app.models import CommentReply
+
+    reply = CommentReply.query.get_or_404(reply_id)
+    video = Video.query.get_or_404(video_id)
+
+    can_delete = (
+        reply.user_id == g.user.id or
+        video.user_id == g.user.id or
+        g.user.is_moderator()
+    )
+
+    if not can_delete:
+        return jsonify({'error': 'Нет прав'}), 403
+
+    db.session.delete(reply)
+    db.session.commit()
+
+    return jsonify({'success': True, 'reply_id': reply_id})

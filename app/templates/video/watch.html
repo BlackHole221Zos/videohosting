@@ -215,15 +215,103 @@
 
 <div class="comments-list" id="comments-list">
     {% for comment in comments[:10] %}
-    <div class="comment" id="comment-{{ comment.id }}">
-        <span class="c-author">{{ comment.author.username }}:</span>
-        <span class="c-text">{{ comment.text|truncate(120) }}</span>
+    <div class="comment-block" id="comment-{{ comment.id }}">
 
-        {% if user and (user.id == comment.user_id or user.id == video.user_id or user.is_moderator()) %}
-        <button class="btn-delete-comment glitch-hover"
-                data-url="{{ url_for('video.delete_comment', video_id=video.id, comment_id=comment.id) }}"
-                title="Удалить комментарий">❌</button>
-        {% endif %}
+        <!-- КОММЕНТАРИЙ -->
+        <div class="comment">
+            <img src="{{ url_for('static', filename='uploads/avatars/' + comment.author.avatar) }}"
+                 class="comment-avatar"
+                 onerror="this.src='{{ url_for('static', filename='img/default_avatar.svg') }}'">
+            <div class="comment-body">
+                <div class="comment-header">
+                    <span class="c-author">{{ comment.author.username }}</span>
+                    <span class="c-date">{{ comment.created_at.strftime('%d.%m.%Y') }}</span>
+                </div>
+                <span class="c-text">{{ comment.text }}</span>
+
+                <!-- Действия с комментарием -->
+                <div class="comment-actions">
+                    {% if user %}
+                    <!-- Лайк -->
+                    <button class="comment-react-btn like-btn"
+                            data-url="{{ url_for('video.react_comment', video_id=video.id, comment_id=comment.id, reaction_type='like') }}"
+                            data-comment-id="{{ comment.id }}">
+                        👍 <span class="like-count">{{ comment.likes_count() }}</span>
+                    </button>
+
+                    <!-- Дизлайк -->
+                    <button class="comment-react-btn dislike-btn"
+                            data-url="{{ url_for('video.react_comment', video_id=video.id, comment_id=comment.id, reaction_type='dislike') }}"
+                            data-comment-id="{{ comment.id }}">
+                        👎 <span class="dislike-count">{{ comment.dislikes_count() }}</span>
+                    </button>
+
+                    <!-- Ответить -->
+                    <button class="comment-reply-toggle"
+                            data-comment-id="{{ comment.id }}">
+                        💬 Ответить
+                        {% if comment.replies_count() > 0 %}
+                        ({{ comment.replies_count() }})
+                        {% endif %}
+                    </button>
+                    {% else %}
+                    <span class="c-likes">👍 {{ comment.likes_count() }}</span>
+                    <span class="c-dislikes">👎 {{ comment.dislikes_count() }}</span>
+                    {% endif %}
+
+                    <!-- Удалить -->
+                    {% if user and (user.id == comment.user_id or user.id == video.user_id or user.is_moderator()) %}
+                    <button class="btn-delete-comment"
+                            data-url="{{ url_for('video.delete_comment', video_id=video.id, comment_id=comment.id) }}"
+                            title="Удалить">❌</button>
+                    {% endif %}
+                </div>
+
+                <!-- Форма ответа (скрыта по умолчанию) -->
+                {% if user %}
+                <div class="reply-form-wrap" id="reply-form-{{ comment.id }}" style="display: none;">
+                    <form class="reply-form"
+                          data-url="{{ url_for('video.add_reply', video_id=video.id, comment_id=comment.id) }}"
+                          data-comment-id="{{ comment.id }}">
+                        <span class="prompt">></span>
+                        <input type="text" class="comment-input reply-input"
+                               placeholder="Ответить {{ comment.author.username }}..."
+                               required maxlength="500">
+                        <button type="submit" class="btn-send">➤</button>
+                    </form>
+                </div>
+                {% endif %}
+
+                <!-- Ответы -->
+                {% if comment.replies_count() > 0 %}
+                <div class="replies-list" id="replies-{{ comment.id }}">
+                    {% for reply in comment.replies.order_by('created_at').all() %}
+                    <div class="reply" id="reply-{{ reply.id }}">
+                        <img src="{{ url_for('static', filename='uploads/avatars/' + reply.author.avatar) }}"
+                             class="comment-avatar comment-avatar-sm"
+                             onerror="this.src='{{ url_for('static', filename='img/default_avatar.svg') }}'">
+                        <div class="comment-body">
+                            <div class="comment-header">
+                                <span class="c-author">{{ reply.author.username }}</span>
+                                <span class="c-date">{{ reply.created_at.strftime('%d.%m.%Y') }}</span>
+                            </div>
+                            <span class="c-text">{{ reply.text }}</span>
+
+                            {% if user and (user.id == reply.user_id or user.id == video.user_id or user.is_moderator()) %}
+                            <button class="btn-delete-reply"
+                                    data-url="{{ url_for('video.delete_reply', video_id=video.id, comment_id=comment.id, reply_id=reply.id) }}"
+                                    data-reply-id="{{ reply.id }}"
+                                    title="Удалить ответ">❌</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="replies-list" id="replies-{{ comment.id }}"></div>
+                {% endif %}
+            </div>
+        </div>
     </div>
     {% else %}
     <p class="empty-hint">// Пусто</p>

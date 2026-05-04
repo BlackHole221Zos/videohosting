@@ -3066,3 +3066,167 @@ ul, ol {
     color: var(--primary);
     font-weight: 600;
 }
+
+/* ============================================
+   КОММЕНТАРИИ С ОТВЕТАМИ И РЕАКЦИЯМИ
+============================================ */
+
+.comment-block {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.comment-block:last-child {
+    border-bottom: none;
+}
+
+.comment {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.comment-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--primary);
+    flex-shrink: 0;
+}
+
+.comment-avatar-sm {
+    width: 24px;
+    height: 24px;
+}
+
+.comment-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.comment-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.c-author {
+    color: var(--primary);
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.c-date {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+}
+
+.c-text {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    line-height: 1.4;
+    display: block;
+    margin-bottom: 6px;
+}
+
+/* Действия */
+.comment-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.comment-react-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 2px 8px;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.comment-react-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.comment-react-btn.active {
+    background: var(--primary-dim);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.comment-reply-toggle {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    cursor: pointer;
+    font-family: inherit;
+    transition: color 0.2s;
+    padding: 2px 4px;
+}
+
+.comment-reply-toggle:hover {
+    color: var(--primary);
+}
+
+.c-likes, .c-dislikes {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.btn-delete-comment,
+.btn-delete-reply {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 11px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    color: var(--danger);
+    padding: 2px 4px;
+    margin-left: auto;
+}
+
+.comment-actions:hover .btn-delete-comment,
+.comment-actions:hover .btn-delete-reply {
+    opacity: 1;
+}
+
+/* Форма ответа */
+.reply-form-wrap {
+    margin-top: 8px;
+}
+
+/* Ответы */
+.replies-list {
+    margin-top: 8px;
+    margin-left: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-left: 2px solid var(--border);
+    padding-left: 10px;
+}
+
+.reply {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.reply.deleting {
+    animation: fadeOut 0.3s ease forwards;
+}
+
+.comment-block.deleting {
+    animation: fadeOut 0.3s ease forwards;
+}
