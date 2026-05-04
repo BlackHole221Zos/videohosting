@@ -3015,7 +3015,13 @@ ul, ol {
     0% { opacity: 1; transform: translateX(0); }
     100% { opacity: 0; transform: translateX(-10px); }
 }
-
+/* Принудительно показываем кнопки действий */
+.comment-react-btn,
+.comment-reply-toggle {
+    display: inline-flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
 /* ============================================
    ВЫБОР КАЧЕСТВА ВИДЕО
 ============================================ */
