@@ -17,12 +17,13 @@ video_bp = Blueprint('video', __name__)
 @login_required
 def upload():
     """Страница загрузки видео"""
+    import json
 
     form = VideoUploadForm()
 
     if form.validate_on_submit():
-        # Сохраняем видео файл
-        video_filename = save_video(form.video.data)
+        # Сохраняем видео файл (теперь возвращает кортеж)
+        video_filename, qualities = save_video(form.video.data)
 
         if not video_filename:
             flash('Ошибка загрузки видео', 'danger')
@@ -43,7 +44,8 @@ def upload():
             mood=form.mood.data,
             visibility=form.visibility.data,
             tags=form.tags.data or '',
-            user_id=g.user.id
+            user_id=g.user.id,
+            qualities=json.dumps(qualities)
         )
 
         db.session.add(video)
@@ -266,3 +268,35 @@ def delete(video_id):
 
     flash('Видео удалено', 'info')
     return redirect(url_for('main.index'))
+
+# ============ УДАЛЕНИЕ КОММЕНТАРИЯ (AJAX) ============
+
+@video_bp.route('/video/<int:video_id>/comment/<int:comment_id>/delete', methods=['POST'])
+@login_required
+def delete_comment(video_id, comment_id):
+    """Удаление комментария (AJAX)"""
+
+    comment = Comment.query.get_or_404(comment_id)
+    video = Video.query.get_or_404(video_id)
+
+    # Проверяем права:
+    # - автор комментария
+    # - автор видео
+    # - модератор или админ
+    can_delete = (
+        comment.user_id == g.user.id or
+        video.user_id == g.user.id or
+        g.user.is_moderator()
+    )
+
+    if not can_delete:
+        return jsonify({'error': 'Нет прав'}), 403
+
+    db.session.delete(comment)
+    db.session.commit()
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': True, 'comment_id': comment_id})
+
+    flash('Комментарий удалён', 'info')
+    return redirect(url_for('video.watch', video_id=video_id))

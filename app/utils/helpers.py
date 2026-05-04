@@ -34,72 +34,67 @@ def generate_unique_filename(original_filename):
 
 def save_video(video_file):
     """
-    Сохраняет видео с конвертацией в MP4 (H.264)
-
-    Args:
-        video_file: файл из формы (FileStorage)
+    Сохраняет видео и конвертирует в несколько качеств
 
     Returns:
-        str: имя сохранённого файла или None
+        tuple: (основной файл, словарь качеств) или (None, {})
     """
-    if not video_file:
-        return None
+    import json
+    from app.utils.video_converter import convert_video_all_qualities
 
-    # Генерируем уникальное имя
-    random_hex = secrets.token_hex(16)
+    if not video_file:
+        return None, {}
+
+    # Генерируем уникальное базовое имя
+    base_name = secrets.token_hex(16)
     _, file_ext = os.path.splitext(video_file.filename)
 
-    # Временное имя для оригинала
-    temp_filename = f'temp_{random_hex}{file_ext}'
-    temp_filepath = os.path.join(
-        current_app.config['UPLOAD_FOLDER'],
-        'videos',
-        temp_filename
-    )
+    videos_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], 'videos')
 
-    # Итоговое имя (всегда .mp4)
-    final_filename = f'{random_hex}.mp4'
-    final_filepath = os.path.join(
-        current_app.config['UPLOAD_FOLDER'],
-        'videos',
-        final_filename
-    )
+    # Временный файл оригинала
+    temp_filename = f'temp_{base_name}{file_ext}'
+    temp_filepath = os.path.join(videos_folder, temp_filename)
 
     try:
-        # Сохраняем оригинал временно
+        # Сохраняем оригинал
         video_file.save(temp_filepath)
+        original_size = os.path.getsize(temp_filepath) / (1024 * 1024)
+        current_app.logger.info(f'📁 Оригинал: {temp_filename} ({original_size:.1f} MB)')
 
-        # Конвертируем в MP4 (H.264)
-        current_app.logger.info(f'Converting video: {temp_filename} -> {final_filename}')
-
-        success = convert_video(
+        # Конвертируем во все качества
+        available_qualities = convert_video_all_qualities(
             input_path=temp_filepath,
-            output_path=final_filepath,
-            max_resolution=1080,  # Сжимаем до 1080p
-            crf=23  # Качество (18-28)
+            base_filename=base_name,
+            videos_folder=videos_folder
         )
 
-        if not success:
-            # Если конвертация не удалась — используем оригинал
-            current_app.logger.warning('Conversion failed, using original file')
-            os.rename(temp_filepath, final_filepath)
-        else:
-            # Удаляем временный файл
-            if os.path.exists(temp_filepath):
-                os.remove(temp_filepath)
-
-        return final_filename
-
-    except Exception as e:
-        current_app.logger.error(f'Error saving video: {str(e)}')
-
-        # Удаляем временные файлы при ошибке
+        # Удаляем временный файл
         if os.path.exists(temp_filepath):
             os.remove(temp_filepath)
-        if os.path.exists(final_filepath):
-            os.remove(final_filepath)
 
-        return None
+        if not available_qualities:
+            current_app.logger.error('❌ Не удалось сконвертировать ни одного качества')
+            return None, {}
+
+        # Основной файл = лучшее доступное качество
+        main_filename = None
+        for q in ['1080p', '720p', '480p', '360p', '240p']:
+            if q in available_qualities:
+                main_filename = available_qualities[q]
+                break
+
+        # Если ничего не нашли — берём первый доступный
+        if not main_filename and available_qualities:
+            main_filename = list(available_qualities.values())[0]
+
+        current_app.logger.info(f'✅ Готово: {available_qualities}')
+        return main_filename, available_qualities
+
+    except Exception as e:
+        current_app.logger.error(f'❌ Ошибка: {str(e)}')
+        if os.path.exists(temp_filepath):
+            os.remove(temp_filepath)
+        return None, {}
 
 
 # ============ ГЕНЕРАЦИЯ ПРЕВЬЮ ============

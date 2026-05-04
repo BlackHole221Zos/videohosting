@@ -16,6 +16,8 @@ document.addEventListener('DOMContentLoaded', function() {
     initGlitchEffects();
     initCustomPlayer();
     initVideoUploadProgress();
+    initDeleteComment();
+    initQualitySelector();
 });
 
 // ============================================
@@ -772,21 +774,119 @@ function initVideoUploadProgress() {
     if (!uploadForm || !uploadBtn || !progressDiv) return;
 
     uploadForm.addEventListener('submit', function(e) {
-        // Проверяем что файл выбран
         var videoInput = document.getElementById('videoInput');
 
         if (videoInput && videoInput.files.length > 0) {
-            // Показываем индикатор
             progressDiv.style.display = 'block';
-
-            // Блокируем кнопку
             uploadBtn.disabled = true;
             uploadBtn.textContent = '⏳ Загрузка...';
 
-            // Прокручиваем к индикатору
             setTimeout(function() {
                 progressDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }, 100);
         }
+    });
+}
+
+// ============================================
+// УДАЛЕНИЕ КОММЕНТАРИЯ
+// ============================================
+function initDeleteComment() {
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.btn-delete-comment');
+        if (!btn) return;
+        e.preventDefault();
+
+        if (!confirm('Удалить комментарий?')) return;
+
+        var url = btn.dataset.url;
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                var comment = document.getElementById('comment-' + data.comment_id);
+                if (comment) {
+                    comment.classList.add('deleting');
+                    setTimeout(function() {
+                        comment.remove();
+
+                        var countEl = document.getElementById('comments-count');
+                        if (countEl) {
+                            countEl.textContent = parseInt(countEl.textContent) - 1;
+                        }
+
+                        var list = document.getElementById('comments-list');
+                        if (list && list.children.length === 0) {
+                            list.innerHTML = '<p class="empty-hint">// Пусто</p>';
+                        }
+                    }, 300);
+
+                    showToast('Комментарий удалён', 'info');
+                }
+            } else {
+                showToast('Ошибка удаления', 'danger');
+            }
+        })
+        .catch(function(err) {
+            console.error(err);
+            showToast('Ошибка', 'danger');
+        });
+    });
+
+    // ============================================
+// ВЫБОР КАЧЕСТВА ВИДЕО
+// ============================================
+function initQualitySelector() {
+    var qualityMenu = document.getElementById('qualityMenu');
+    var qualityBtn = document.getElementById('qualityBtn');
+    var video = document.getElementById('videoElement');
+
+    if (!qualityMenu || !qualityBtn || !video) return;
+
+    var qualityBtns = qualityMenu.querySelectorAll('button');
+
+    // Устанавливаем первое качество как активное
+    if (qualityBtns.length > 0) {
+        qualityBtns[0].classList.add('active');
+        qualityBtn.textContent = '⚙️ ' + qualityBtns[0].dataset.quality;
+    }
+
+    qualityBtns.forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+
+            var quality = this.dataset.quality;
+            var url = this.dataset.url;
+
+            // Запоминаем текущее время
+            var currentTime = video.currentTime;
+            var wasPlaying = !video.paused;
+
+            // Меняем источник
+            video.src = url;
+            video.load();
+
+            // Восстанавливаем позицию
+            video.addEventListener('loadedmetadata', function() {
+                video.currentTime = currentTime;
+                if (wasPlaying) {
+                    video.play();
+                }
+            }, { once: true });
+
+            // Обновляем UI
+            qualityBtns.forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            qualityBtn.textContent = '⚙️ ' + quality;
+
+            showToast('Качество: ' + quality, 'info');
+        });
     });
 }

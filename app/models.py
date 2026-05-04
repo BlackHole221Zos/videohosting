@@ -117,6 +117,7 @@ class Video(db.Model):
 
     __tablename__ = 'video'
 
+    qualities = db.Column(db.Text, default='{}')
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, default='')
@@ -197,6 +198,22 @@ class Video(db.Model):
 
     def __repr__(self):
         return f'<Video {self.title}>'
+
+    def get_qualities(self):
+        """Возвращает словарь доступных качеств"""
+        import json
+        try:
+            return json.loads(self.qualities) if self.qualities else {}
+        except:
+            return {}
+
+    def get_best_quality_filename(self):
+        """Возвращает файл лучшего качества или основной файл"""
+        qualities = self.get_qualities()
+        for q in ['1080p', '720p', '480p']:
+            if q in qualities:
+                return qualities[q]
+        return self.filename
 
 
 # ============ КОММЕНТАРИЙ ============

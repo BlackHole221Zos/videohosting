@@ -67,24 +67,40 @@
                     </div>
 
                     <!-- Правая часть -->
-                    <div class="controls-right">
-                        <div class="speed-wrap">
-                            <button class="ctrl-btn ctrl-text" id="speedBtn">1x</button>
-                            <div class="speed-menu" id="speedMenu">
-                                <button data-speed="0.25">0.25x</button>
-                                <button data-speed="0.5">0.5x</button>
-                                <button data-speed="0.75">0.75x</button>
-                                <button data-speed="1" class="active">1x</button>
-                                <button data-speed="1.25">1.25x</button>
-                                <button data-speed="1.5">1.5x</button>
-                                <button data-speed="2">2x</button>
-                            </div>
-                        </div>
+<div class="controls-right">
+    <div class="speed-wrap">
+        <button class="ctrl-btn ctrl-text" id="speedBtn">1x</button>
+        <div class="speed-menu" id="speedMenu">
+            <button data-speed="0.25">0.25x</button>
+            <button data-speed="0.5">0.5x</button>
+            <button data-speed="0.75">0.75x</button>
+            <button data-speed="1" class="active">1x</button>
+            <button data-speed="1.25">1.25x</button>
+            <button data-speed="1.5">1.5x</button>
+            <button data-speed="2">2x</button>
+        </div>
+    </div>
 
-                        <button class="ctrl-btn" id="pipBtn" title="Картинка в картинке">🖼</button>
-                        <button class="ctrl-btn" id="wideBtn" title="Широкий режим">⬌</button>
-                        <button class="ctrl-btn" id="fullscreenBtn" title="На весь экран">⛶</button>
-                    </div>
+    <!-- 🆕 КАЧЕСТВО ВИДЕО -->
+    {% set qualities = video.get_qualities() %}
+    {% if qualities %}
+    <div class="quality-wrap">
+        <button class="ctrl-btn ctrl-text" id="qualityBtn">⚙️ Авто</button>
+        <div class="quality-menu" id="qualityMenu">
+            {% for q, filename in qualities.items() %}
+            <button data-quality="{{ q }}"
+                    data-url="{{ url_for('static', filename='uploads/videos/' + filename) }}">
+                {{ q }}
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <button class="ctrl-btn" id="pipBtn" title="Картинка в картинке">🖼</button>
+    <button class="ctrl-btn" id="wideBtn" title="Широкий режим">⬌</button>
+    <button class="ctrl-btn" id="fullscreenBtn" title="На весь экран">⛶</button>
+</div>
                 </div>
             </div>
         </div>
@@ -197,16 +213,22 @@
             <p class="login-hint"><a href="{{ url_for('auth.login') }}">Войти</a></p>
             {% endif %}
 
-            <div class="comments-list" id="comments-list">
-                {% for comment in comments[:10] %}
-                <div class="comment">
-                    <span class="c-author">{{ comment.author.username }}:</span>
-                    <span class="c-text">{{ comment.text|truncate(120) }}</span>
-                </div>
-                {% else %}
-                <p class="empty-hint">// Пусто</p>
-                {% endfor %}
-            </div>
+<div class="comments-list" id="comments-list">
+    {% for comment in comments[:10] %}
+    <div class="comment" id="comment-{{ comment.id }}">
+        <span class="c-author">{{ comment.author.username }}:</span>
+        <span class="c-text">{{ comment.text|truncate(120) }}</span>
+
+        {% if user and (user.id == comment.user_id or user.id == video.user_id or user.is_moderator()) %}
+        <button class="btn-delete-comment glitch-hover"
+                data-url="{{ url_for('video.delete_comment', video_id=video.id, comment_id=comment.id) }}"
+                title="Удалить комментарий">❌</button>
+        {% endif %}
+    </div>
+    {% else %}
+    <p class="empty-hint">// Пусто</p>
+    {% endfor %}
+</div>
         </div>
 
         <div class="related-box">
