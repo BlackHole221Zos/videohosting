@@ -41,13 +41,13 @@
 
                 <div class="hero-shortcuts">
                     <a href="#topSection" class="hero-shortcut">🔥 Топ</a>
-                    <a href="#browseSection" class="hero-shortcut">🎭 Настроения</a>
+                    <a href="#browseSection" class="hero-shortcut overview-open-section" data-mood-target="all">🎭 Настроения</a>
                     {% if user and recommended %}
                         <a href="#recommendationsSection" class="hero-shortcut">🎯 Для вас</a>
                     {% else %}
                         <a href="{{ url_for('search.search') }}" class="hero-shortcut">🔎 Поиск</a>
                     {% endif %}
-                    <a href="{{ url_for('main.index') }}" class="hero-shortcut">🆕 Новое</a>
+                    <a href="#browseSection" class="hero-shortcut overview-open-section" data-mood-target="new">🆕 Новое</a>
                 </div>
 
                 <div class="hero-mini-panel">
@@ -64,7 +64,7 @@
                     <div class="hero-mini-list">
                         {% set quick_list = recommended if user and recommended else chart_videos %}
                         {% if quick_list %}
-                            {% for video in quick_list[:2] %}
+                            {% for video in quick_list[:1] %}
                                 <a href="{{ url_for('video.watch', video_id=video.id) }}" class="hero-mini-item">
                                     <span class="hero-mini-mood">{{ video.mood_emoji() }}</span>
                                     <span class="hero-mini-text">
@@ -140,187 +140,187 @@
     <!-- ==========================================
          ОБЗОР ПЛАТФОРМЫ
     ========================================== -->
-   <section class="signal-board" id="topSection">
-    <div class="section-heading">
-        <div>
-            <span class="section-kicker">обзор платформы</span>
-            <h2>Что сейчас на платформе</h2>
-        </div>
-        <p class="section-subtitle">
-            Краткая сводка по ленте и текущему рейтингу видео.
-        </p>
-    </div>
-
-    <div class="signal-grid signal-grid-actions">
-        <button type="button" class="signal-card signal-card-action active" data-overview="new">
-            <span class="signal-card-label">новое</span>
-            <strong class="signal-card-value">{{ new_videos|length }}</strong>
-            <p class="signal-card-note">свежие публикации в общей ленте</p>
-        </button>
-
-        <button type="button" class="signal-card signal-card-action" data-overview="trending">
-            <span class="signal-card-label">в тренде</span>
-            <strong class="signal-card-value">{{ trending_videos|length }}</strong>
-            <p class="signal-card-note">ролики, которые сейчас набирают активность</p>
-        </button>
-
-        <button type="button" class="signal-card signal-card-action" data-overview="moods">
-            <span class="signal-card-label">настроения</span>
-            <strong class="signal-card-value">{{ moods|length }}</strong>
-            <p class="signal-card-note">от смеха до вдохновения</p>
-        </button>
-
-        <button type="button" class="signal-card signal-card-action" data-overview="top">
-            <span class="signal-card-label">топ</span>
-            <strong class="signal-card-value">{{ chart_videos|length }}</strong>
-            <p class="signal-card-note">видео в текущем рейтинге</p>
-        </button>
-    </div>
-
-    <div class="overview-preview">
-
-        <!-- Новое -->
-        <div class="overview-panel active" data-overview-panel="new">
-            <div class="overview-panel-head">
-                <div>
-                    <h3>Свежие публикации</h3>
-                    <p>Последние видео, добавленные на платформу.</p>
-                </div>
-                <button type="button" class="btn btn-outline btn-sm overview-open-section" data-mood-target="new">
-                    Открыть в ленте
-                </button>
+    <section class="signal-board" id="topSection">
+        <div class="section-heading">
+            <div>
+                <span class="section-kicker">обзор платформы</span>
+                <h2>Что сейчас на платформе</h2>
             </div>
-
-            {% if new_videos %}
-                <div class="chart-strip">
-                    {% for video in new_videos[:6] %}
-                        <a href="{{ url_for('video.watch', video_id=video.id) }}" class="chart-strip-item">
-                            <div class="chart-strip-media">
-                                <img
-                                    src="{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}"
-                                    alt="{{ video.title }}"
-                                    onerror="this.src='{{ url_for('static', filename='img/default_thumb.svg') }}'"
-                                >
-                                <span class="chart-strip-rank">🆕</span>
-                            </div>
-                            <div class="chart-strip-body">
-                                <h3 class="chart-strip-title">{{ video.title }}</h3>
-                                <p class="chart-strip-meta">{{ video.author.username }} • {{ video.views }} просмотров</p>
-                            </div>
-                        </a>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="empty-state compact">
-                    <p>Пока нет новых видео.</p>
-                </div>
-            {% endif %}
+            <p class="section-subtitle">
+                Краткая сводка по ленте и текущему рейтингу видео.
+            </p>
         </div>
 
-        <!-- В тренде -->
-        <div class="overview-panel" data-overview-panel="trending">
-            <div class="overview-panel-head">
-                <div>
-                    <h3>Сейчас в тренде</h3>
-                    <p>Видео, которые прямо сейчас набирают активность.</p>
-                </div>
-                <button type="button" class="btn btn-outline btn-sm overview-open-section" data-mood-target="trending">
-                    Открыть в ленте
-                </button>
-            </div>
+        <div class="signal-grid signal-grid-actions">
+            <button type="button" class="signal-card signal-card-action active" data-overview="new">
+                <span class="signal-card-label">новое</span>
+                <strong class="signal-card-value">{{ new_videos|length }}</strong>
+                <p class="signal-card-note">свежие публикации в общей ленте</p>
+            </button>
 
-            {% if trending_videos %}
-                <div class="chart-strip">
-                    {% for video in trending_videos[:6] %}
-                        <a href="{{ url_for('video.watch', video_id=video.id) }}" class="chart-strip-item">
-                            <div class="chart-strip-media">
-                                <img
-                                    src="{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}"
-                                    alt="{{ video.title }}"
-                                    onerror="this.src='{{ url_for('static', filename='img/default_thumb.svg') }}'"
-                                >
-                                <span class="chart-strip-rank">📈</span>
-                            </div>
-                            <div class="chart-strip-body">
-                                <h3 class="chart-strip-title">{{ video.title }}</h3>
-                                <p class="chart-strip-meta">{{ video.author.username }} • {{ video.karma }} 🔥</p>
-                            </div>
-                        </a>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="empty-state compact">
-                    <p>Пока нет трендовых видео.</p>
-                </div>
-            {% endif %}
+            <button type="button" class="signal-card signal-card-action" data-overview="trending">
+                <span class="signal-card-label">в тренде</span>
+                <strong class="signal-card-value">{{ trending_videos|length }}</strong>
+                <p class="signal-card-note">ролики, которые сейчас набирают активность</p>
+            </button>
+
+            <button type="button" class="signal-card signal-card-action" data-overview="moods">
+                <span class="signal-card-label">настроения</span>
+                <strong class="signal-card-value">{{ moods|length }}</strong>
+                <p class="signal-card-note">от смеха до вдохновения</p>
+            </button>
+
+            <button type="button" class="signal-card signal-card-action" data-overview="top">
+                <span class="signal-card-label">топ</span>
+                <strong class="signal-card-value">{{ chart_videos|length }}</strong>
+                <p class="signal-card-note">видео в текущем рейтинге</p>
+            </button>
         </div>
 
-        <!-- Настроения -->
-        <div class="overview-panel" data-overview-panel="moods">
-            <div class="overview-panel-head">
-                <div>
-                    <h3>Настроения платформы</h3>
-                    <p>Выбери настроение и перейди сразу к нужной подборке.</p>
-                </div>
-                <button type="button" class="btn btn-outline btn-sm overview-open-section" data-mood-target="all">
-                    Открыть общую ленту
-                </button>
-            </div>
+        <div class="overview-preview">
 
-            <div class="overview-moods-grid">
-                {% for mood_key, mood_data in moods.items() %}
-                    <button
-                        type="button"
-                        class="overview-mood-item overview-open-section"
-                        data-mood-target="{{ mood_key }}"
-                    >
-                        <span class="overview-mood-emoji">{{ mood_data.emoji }}</span>
-                        <span class="overview-mood-info">
-                            <strong>{{ mood_data.name }}</strong>
-                            <small>{{ mood_data.videos|length }} видео</small>
-                        </span>
+            <!-- Новое -->
+            <div class="overview-panel active" data-overview-panel="new">
+                <div class="overview-panel-head">
+                    <div>
+                        <h3>Свежие публикации</h3>
+                        <p>Последние видео, добавленные на платформу.</p>
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm overview-open-section" data-mood-target="new">
+                        Открыть в ленте
                     </button>
-                {% endfor %}
-            </div>
-        </div>
-
-        <!-- Топ -->
-        <div class="overview-panel" data-overview-panel="top">
-            <div class="overview-panel-head">
-                <div>
-                    <h3>Текущий топ</h3>
-                    <p>Самые заметные видео по активности и карме.</p>
                 </div>
+
+                {% if new_videos %}
+                    <div class="chart-strip">
+                        {% for video in new_videos[:6] %}
+                            <a href="{{ url_for('video.watch', video_id=video.id) }}" class="chart-strip-item">
+                                <div class="chart-strip-media">
+                                    <img
+                                        src="{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}"
+                                        alt="{{ video.title }}"
+                                        onerror="this.src='{{ url_for('static', filename='img/default_thumb.svg') }}'"
+                                    >
+                                    <span class="chart-strip-rank">🆕</span>
+                                </div>
+                                <div class="chart-strip-body">
+                                    <h3 class="chart-strip-title">{{ video.title }}</h3>
+                                    <p class="chart-strip-meta">{{ video.author.username }} • {{ video.views }} просмотров</p>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state compact">
+                        <p>Пока нет новых видео.</p>
+                    </div>
+                {% endif %}
             </div>
 
-            {% if chart_videos %}
-                <div class="chart-strip">
-                    {% for video in chart_videos[:6] %}
-                        <a href="{{ url_for('video.watch', video_id=video.id) }}" class="chart-strip-item">
-                            <div class="chart-strip-media">
-                                <img
-                                    src="{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}"
-                                    alt="{{ video.title }}"
-                                    onerror="this.src='{{ url_for('static', filename='img/default_thumb.svg') }}'"
-                                >
-                                <span class="chart-strip-rank">#{{ loop.index }}</span>
-                            </div>
-                            <div class="chart-strip-body">
-                                <h3 class="chart-strip-title">{{ video.title }}</h3>
-                                <p class="chart-strip-meta">{{ video.author.username }} • {{ video.karma }} 🔥</p>
-                            </div>
-                        </a>
+            <!-- В тренде -->
+            <div class="overview-panel" data-overview-panel="trending">
+                <div class="overview-panel-head">
+                    <div>
+                        <h3>Сейчас в тренде</h3>
+                        <p>Видео, которые прямо сейчас набирают активность.</p>
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm overview-open-section" data-mood-target="trending">
+                        Открыть в ленте
+                    </button>
+                </div>
+
+                {% if trending_videos %}
+                    <div class="chart-strip">
+                        {% for video in trending_videos[:6] %}
+                            <a href="{{ url_for('video.watch', video_id=video.id) }}" class="chart-strip-item">
+                                <div class="chart-strip-media">
+                                    <img
+                                        src="{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}"
+                                        alt="{{ video.title }}"
+                                        onerror="this.src='{{ url_for('static', filename='img/default_thumb.svg') }}'"
+                                    >
+                                    <span class="chart-strip-rank">📈</span>
+                                </div>
+                                <div class="chart-strip-body">
+                                    <h3 class="chart-strip-title">{{ video.title }}</h3>
+                                    <p class="chart-strip-meta">{{ video.author.username }} • {{ video.karma }} 🔥</p>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state compact">
+                        <p>Пока нет трендовых видео.</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Настроения -->
+            <div class="overview-panel" data-overview-panel="moods">
+                <div class="overview-panel-head">
+                    <div>
+                        <h3>Настроения платформы</h3>
+                        <p>Выбери настроение и перейди сразу к нужной подборке.</p>
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm overview-open-section" data-mood-target="all">
+                        Открыть общую ленту
+                    </button>
+                </div>
+
+                <div class="overview-moods-grid">
+                    {% for mood_key, mood_data in moods.items() %}
+                        <button
+                            type="button"
+                            class="overview-mood-item overview-open-section"
+                            data-mood-target="{{ mood_key }}"
+                        >
+                            <span class="overview-mood-emoji">{{ mood_data.emoji }}</span>
+                            <span class="overview-mood-info">
+                                <strong>{{ mood_data.name }}</strong>
+                                <small>{{ mood_data.videos|length }} видео</small>
+                            </span>
+                        </button>
                     {% endfor %}
                 </div>
-            {% else %}
-                <div class="empty-state compact">
-                    <p>Пока рейтинг пуст.</p>
-                </div>
-            {% endif %}
-        </div>
+            </div>
 
-    </div>
-</section>
+            <!-- Топ -->
+            <div class="overview-panel" data-overview-panel="top">
+                <div class="overview-panel-head">
+                    <div>
+                        <h3>Текущий топ</h3>
+                        <p>Самые заметные видео по активности и карме.</p>
+                    </div>
+                </div>
+
+                {% if chart_videos %}
+                    <div class="chart-strip">
+                        {% for video in chart_videos[:6] %}
+                            <a href="{{ url_for('video.watch', video_id=video.id) }}" class="chart-strip-item">
+                                <div class="chart-strip-media">
+                                    <img
+                                        src="{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}"
+                                        alt="{{ video.title }}"
+                                        onerror="this.src='{{ url_for('static', filename='img/default_thumb.svg') }}'"
+                                    >
+                                    <span class="chart-strip-rank">#{{ loop.index }}</span>
+                                </div>
+                                <div class="chart-strip-body">
+                                    <h3 class="chart-strip-title">{{ video.title }}</h3>
+                                    <p class="chart-strip-meta">{{ video.author.username }} • {{ video.karma }} 🔥</p>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state compact">
+                        <p>Пока рейтинг пуст.</p>
+                    </div>
+                {% endif %}
+            </div>
+
+        </div>
+    </section>
 
     <!-- ==========================================
          ЛЕНТА ПО НАСТРОЕНИЮ

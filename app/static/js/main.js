@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initHeroCarousel();
     initMoodTabs();
     initOverviewCards();
+    initQuickMoodButtons();
     initFileUpload();
     initAvatarPreview();
     initAutoHideAlerts();
@@ -23,9 +24,10 @@ document.addEventListener('DOMContentLoaded', function() {
     initDeleteReply();
 });
 
-// ============================================
-// ТЕМА
-// ============================================
+/* ============================================
+   ТЕМА
+============================================ */
+
 function initThemeToggle() {
     var toggle = document.getElementById('themeToggle');
     if (!toggle) return;
@@ -48,7 +50,6 @@ function initThemeToggle() {
 function updateThemeIcon(theme) {
     var toggle = document.getElementById('themeToggle');
     if (!toggle) return;
-
     var icon = toggle.querySelector('.theme-icon');
     if (icon) {
         icon.textContent = theme === 'dark' ? '☀️' : '🌙';
@@ -61,9 +62,10 @@ function updateThemeMeta(theme) {
     meta.setAttribute('content', theme === 'dark' ? '#282828' : '#fbf1c7');
 }
 
-// ============================================
-// HERO КАРУСЕЛЬ
-// ============================================
+/* ============================================
+   HERO КАРУСЕЛЬ
+============================================ */
+
 function initHeroCarousel() {
     var carousel = document.getElementById('heroCarousel');
     if (!carousel) return;
@@ -87,9 +89,7 @@ function initHeroCarousel() {
         if (dots[currentIndex]) dots[currentIndex].classList.add('active');
     }
 
-    function nextSlide() {
-        goToSlide(currentIndex + 1);
-    }
+    function nextSlide() { goToSlide(currentIndex + 1); }
 
     function startAutoplay() {
         stopAutoplay();
@@ -114,9 +114,10 @@ function initHeroCarousel() {
     startAutoplay();
 }
 
-// ============================================
-// ТАБЫ НАСТРОЕНИЙ
-// ============================================
+/* ============================================
+   ТАБЫ НАСТРОЕНИЙ
+============================================ */
+
 function initMoodTabs() {
     var tabs = document.querySelectorAll('.mood-tab');
     var panels = document.querySelectorAll('.mood-panel');
@@ -126,7 +127,6 @@ function initMoodTabs() {
     if (savedMood) {
         var savedTab = document.querySelector('.mood-tab[data-mood="' + savedMood + '"]');
         var savedPanel = document.querySelector('.mood-panel[data-mood="' + savedMood + '"]');
-
         if (savedTab && savedPanel) {
             tabs.forEach(function(t) { t.classList.remove('active'); });
             panels.forEach(function(p) { p.classList.remove('active'); });
@@ -156,6 +156,10 @@ function initMoodTabs() {
     });
 }
 
+/* ============================================
+   ИНТЕРАКТИВНЫЙ БЛОК ОБЗОРА ПЛАТФОРМЫ
+============================================ */
+
 function initOverviewCards() {
     var cards = document.querySelectorAll('.signal-card-action');
     var panels = document.querySelectorAll('.overview-panel');
@@ -166,20 +170,15 @@ function initOverviewCards() {
         card.addEventListener('click', function() {
             var overview = this.dataset.overview;
 
-            cards.forEach(function(c) {
-                c.classList.remove('active');
-            });
-
-            panels.forEach(function(panel) {
-                panel.classList.remove('active');
-            });
+            cards.forEach(function(c) { c.classList.remove('active'); });
+            panels.forEach(function(panel) { panel.classList.remove('active'); });
 
             this.classList.add('active');
 
-            var targetPanel = document.querySelector('.overview-panel[data-overview-panel="' + overview + '"]');
-            if (targetPanel) {
-                targetPanel.classList.add('active');
-            }
+            var targetPanel = document.querySelector(
+                '.overview-panel[data-overview-panel="' + overview + '"]'
+            );
+            if (targetPanel) targetPanel.classList.add('active');
         });
     });
 
@@ -192,23 +191,42 @@ function initOverviewCards() {
 
         if (mood) {
             var tab = document.querySelector('.mood-tab[data-mood="' + mood + '"]');
-            if (tab) {
-                tab.click();
-            }
+            if (tab) tab.click();
         }
 
         if (browse) {
-            browse.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
+            browse.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     });
 }
 
-// ============================================
-// ЗАГРУЗКА ФАЙЛОВ
-// ============================================
+/* ============================================
+   БЫСТРЫЕ КНОПКИ НАСТРОЕНИЙ (HERO)
+============================================ */
+
+function initQuickMoodButtons() {
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.quick-mood-btn');
+        if (!btn) return;
+
+        var mood = btn.dataset.moodTarget;
+        var browse = document.getElementById('browseSection');
+
+        if (mood) {
+            var tab = document.querySelector('.mood-tab[data-mood="' + mood + '"]');
+            if (tab) tab.click();
+        }
+
+        if (browse) {
+            browse.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    });
+}
+
+/* ============================================
+   ЗАГРУЗКА ФАЙЛОВ
+============================================ */
+
 function initFileUpload() {
     var fileInput = document.getElementById('videoInput');
     if (!fileInput) return;
@@ -230,9 +248,10 @@ function initFileUpload() {
     });
 }
 
-// ============================================
-// ПРЕВЬЮ АВАТАРА
-// ============================================
+/* ============================================
+   ПРЕВЬЮ АВАТАРА
+============================================ */
+
 function initAvatarPreview() {
     var avatarInput = document.getElementById('avatarInput');
     var avatarPreview = document.getElementById('avatarPreview');
@@ -249,25 +268,25 @@ function initAvatarPreview() {
     });
 }
 
-// ============================================
-// АВТОСКРЫТИЕ АЛЕРТОВ
-// ============================================
+/* ============================================
+   АВТОСКРЫТИЕ АЛЕРТОВ
+============================================ */
+
 function initAutoHideAlerts() {
     var alerts = document.querySelectorAll('.alert');
-
     alerts.forEach(function(alert) {
         setTimeout(function() {
+            alert.style.transition = 'opacity 0.3s ease';
             alert.style.opacity = '0';
-            setTimeout(function() {
-                alert.remove();
-            }, 300);
+            setTimeout(function() { alert.remove(); }, 300);
         }, 5000);
     });
 }
 
-// ============================================
-// КАРУСЕЛЬ ПОДПИСОК
-// ============================================
+/* ============================================
+   КАРУСЕЛЬ ПОДПИСОК
+============================================ */
+
 function initSubscriptionsCarousel() {
     var bubbles = document.querySelectorAll('.channel-bubble');
     var videoBlocks = document.querySelectorAll('.channel-videos');
@@ -282,15 +301,18 @@ function initSubscriptionsCarousel() {
 
             this.classList.add('active');
 
-            var target = document.querySelector('.channel-videos[data-channel-id="' + channelId + '"]');
+            var target = document.querySelector(
+                '.channel-videos[data-channel-id="' + channelId + '"]'
+            );
             if (target) target.classList.add('active');
         });
     });
 }
 
-// ============================================
-// AJAX РЕАКЦИИ НА ВИДЕО
-// ============================================
+/* ============================================
+   AJAX РЕАКЦИИ НА ВИДЕО
+============================================ */
+
 function initReactions() {
     var btns = document.querySelectorAll('.reaction-ajax-btn');
 
@@ -298,9 +320,7 @@ function initReactions() {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
 
-            var url = this.dataset.url;
-
-            fetch(url, {
+            fetch(this.dataset.url, {
                 method: 'POST',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
@@ -311,9 +331,7 @@ function initReactions() {
             .then(function(data) {
                 if (data.success) updateReactionUI(data);
             })
-            .catch(function(err) {
-                console.error(err);
-            });
+            .catch(function(err) { console.error(err); });
         });
     });
 }
@@ -321,9 +339,7 @@ function initReactions() {
 function updateReactionUI(data) {
     document.querySelectorAll('.reaction-ajax-btn').forEach(function(btn) {
         btn.classList.remove('active');
-        if (btn.dataset.reaction === data.user_reaction) {
-            btn.classList.add('active');
-        }
+        if (btn.dataset.reaction === data.user_reaction) btn.classList.add('active');
     });
 
     var fire = document.getElementById('fire-count');
@@ -337,9 +353,10 @@ function updateReactionUI(data) {
     if (karma) karma.textContent = data.karma;
 }
 
-// ============================================
-// AJAX КОММЕНТАРИИ
-// ============================================
+/* ============================================
+   AJAX КОММЕНТАРИИ
+============================================ */
+
 function initCommentForm() {
     var form = document.getElementById('comment-form');
     if (!form) return;
@@ -350,7 +367,6 @@ function initCommentForm() {
         var input = form.querySelector('.comment-input') ||
                     form.querySelector('textarea') ||
                     form.querySelector('input[type="text"]');
-
         if (!input) return;
 
         var text = input.value.trim();
@@ -410,7 +426,6 @@ function addCommentToList(comment) {
     if (newComment) {
         newComment.style.opacity = '0';
         newComment.style.transform = 'translateY(-10px)';
-
         setTimeout(function() {
             newComment.style.transition = 'all 0.3s ease';
             newComment.style.opacity = '1';
@@ -426,9 +441,10 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// ============================================
-// AJAX ПОДПИСКИ
-// ============================================
+/* ============================================
+   AJAX ПОДПИСКИ
+============================================ */
+
 function initSubscribeButtons() {
     document.addEventListener('click', function(e) {
         var btn = e.target.closest('.subscribe-ajax-btn');
@@ -473,7 +489,6 @@ function updateSubscribeButton(btn, username, isFollowing) {
         btn.classList.remove('not-subscribed');
         btn.classList.add('subscribed');
         btn.dataset.url = '/user/' + username + '/unfollow';
-
         if (btn.classList.contains('btn-sub')) {
             btn.innerHTML = '<span class="btn-text-default">✓</span><span class="btn-text-hover">✕</span>';
         } else {
@@ -482,9 +497,7 @@ function updateSubscribeButton(btn, username, isFollowing) {
     } else {
         btn.classList.remove('subscribed');
         btn.classList.add('not-subscribed');
-        btn.classList.add('not-subscribed');
         btn.dataset.url = '/user/' + username + '/follow';
-
         if (btn.classList.contains('btn-sub')) {
             btn.innerHTML = '+';
         } else {
@@ -493,9 +506,10 @@ function updateSubscribeButton(btn, username, isFollowing) {
     }
 }
 
-// ============================================
-// ВЫБОР ОБЛОЖКИ
-// ============================================
+/* ============================================
+   ВЫБОР ОБЛОЖКИ
+============================================ */
+
 function initThumbnailChoice() {
     var cards = document.querySelectorAll('.radio-card');
     var customUpload = document.getElementById('customThumbUpload');
@@ -515,9 +529,10 @@ function initThumbnailChoice() {
     });
 }
 
-// ============================================
-// КОПИРОВАНИЕ ССЫЛКИ
-// ============================================
+/* ============================================
+   КОПИРОВАНИЕ ССЫЛКИ
+============================================ */
+
 function initCopyLink() {
     var btns = document.querySelectorAll('.copy-link-btn');
 
@@ -542,9 +557,10 @@ function initCopyLink() {
     });
 }
 
-// ============================================
-// КАСТОМНЫЙ ВИДЕО ПЛЕЕР
-// ============================================
+/* ============================================
+   КАСТОМНЫЙ ВИДЕО ПЛЕЕР
+============================================ */
+
 function initCustomPlayer() {
     var player = document.getElementById('customPlayer');
     var video = document.getElementById('videoElement');
@@ -589,17 +605,9 @@ function initCustomPlayer() {
         if (e.target === video) togglePlay();
     });
 
-    video.addEventListener('play', function() {
-        player.classList.add('playing');
-    });
-
-    video.addEventListener('pause', function() {
-        player.classList.remove('playing');
-    });
-
-    video.addEventListener('ended', function() {
-        player.classList.remove('playing');
-    });
+    video.addEventListener('play', function() { player.classList.add('playing'); });
+    video.addEventListener('pause', function() { player.classList.remove('playing'); });
+    video.addEventListener('ended', function() { player.classList.remove('playing'); });
 
     if (stopBtn) {
         stopBtn.addEventListener('click', function() {
@@ -673,16 +681,12 @@ function initCustomPlayer() {
 
     if (speedMenu) {
         var speedBtns = speedMenu.querySelectorAll('button');
-
         speedBtns.forEach(function(btn) {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
-
                 var speed = parseFloat(this.dataset.speed);
                 video.playbackRate = speed;
-
                 if (speedBtn) speedBtn.textContent = speed + 'x';
-
                 speedBtns.forEach(function(b) { b.classList.remove('active'); });
                 this.classList.add('active');
             });
@@ -695,9 +699,7 @@ function initCustomPlayer() {
         } else {
             pipBtn.addEventListener('click', function() {
                 if (document.pictureInPictureElement) {
-                    document.exitPictureInPicture().catch(function(err) {
-                        console.log(err);
-                    });
+                    document.exitPictureInPicture().catch(function(err) { console.log(err); });
                 } else {
                     video.requestPictureInPicture().catch(function() {
                         showToast('PiP не поддерживается', 'warning');
@@ -734,7 +736,6 @@ function initCustomPlayer() {
                    document.webkitFullscreenElement ||
                    document.mozFullScreenElement ||
                    document.msFullscreenElement;
-
         player.classList.toggle('fullscreen', !!isFs);
     }
 
@@ -752,14 +753,8 @@ function initCustomPlayer() {
         });
     }
 
-    video.addEventListener('waiting', function() {
-        player.classList.add('loading');
-    });
-
-    video.addEventListener('canplay', function() {
-        player.classList.remove('loading');
-    });
-
+    video.addEventListener('waiting', function() { player.classList.add('loading'); });
+    video.addEventListener('canplay', function() { player.classList.remove('loading'); });
     video.addEventListener('error', function() {
         player.classList.remove('loading');
         showToast('Ошибка загрузки видео', 'danger');
@@ -809,14 +804,13 @@ function initCustomPlayer() {
         }
     });
 
-    video.play().catch(function() {
-        player.classList.remove('playing');
-    });
+    video.play().catch(function() { player.classList.remove('playing'); });
 }
 
-// ============================================
-// TOAST УВЕДОМЛЕНИЯ
-// ============================================
+/* ============================================
+   TOAST УВЕДОМЛЕНИЯ
+============================================ */
+
 function showToast(message, type) {
     var existing = document.querySelectorAll('.toast');
     existing.forEach(function(t) { t.remove(); });
@@ -826,21 +820,18 @@ function showToast(message, type) {
     toast.textContent = message;
     document.body.appendChild(toast);
 
-    setTimeout(function() {
-        toast.classList.add('show');
-    }, 10);
+    setTimeout(function() { toast.classList.add('show'); }, 10);
 
     setTimeout(function() {
         toast.classList.remove('show');
-        setTimeout(function() {
-            toast.remove();
-        }, 300);
+        setTimeout(function() { toast.remove(); }, 300);
     }, 3000);
 }
 
-// ============================================
-// ИНДИКАТОР ЗАГРУЗКИ ВИДЕО
-// ============================================
+/* ============================================
+   ИНДИКАТОР ЗАГРУЗКИ ВИДЕО
+============================================ */
+
 function initVideoUploadProgress() {
     var uploadForm = document.getElementById('uploadForm');
     var uploadBtn = document.getElementById('uploadBtn');
@@ -854,7 +845,6 @@ function initVideoUploadProgress() {
             progressDiv.style.display = 'block';
             uploadBtn.disabled = true;
             uploadBtn.textContent = '⏳ Загрузка...';
-
             setTimeout(function() {
                 progressDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }, 100);
@@ -862,21 +852,19 @@ function initVideoUploadProgress() {
     });
 }
 
-// ============================================
-// УДАЛЕНИЕ КОММЕНТАРИЯ
-// ============================================
+/* ============================================
+   УДАЛЕНИЕ КОММЕНТАРИЯ
+============================================ */
+
 function initDeleteComment() {
     document.addEventListener('click', function(e) {
         var btn = e.target.closest('.btn-delete-comment');
         if (!btn) return;
 
         e.preventDefault();
-
         if (!confirm('Удалить комментарий?')) return;
 
-        var url = btn.dataset.url;
-
-        fetch(url, {
+        fetch(btn.dataset.url, {
             method: 'POST',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
@@ -887,24 +875,17 @@ function initDeleteComment() {
         .then(function(data) {
             if (data.success) {
                 var comment = document.getElementById('comment-' + data.comment_id);
-
                 if (comment) {
                     comment.classList.add('deleting');
-
                     setTimeout(function() {
                         comment.remove();
-
                         var countEl = document.getElementById('comments-count');
-                        if (countEl) {
-                            countEl.textContent = parseInt(countEl.textContent, 10) - 1;
-                        }
-
+                        if (countEl) countEl.textContent = parseInt(countEl.textContent, 10) - 1;
                         var list = document.getElementById('comments-list');
                         if (list && list.children.length === 0) {
                             list.innerHTML = '<p class="empty-hint">// Пусто</p>';
                         }
                     }, 300);
-
                     showToast('Комментарий удалён', 'info');
                 }
             } else {
@@ -918,9 +899,10 @@ function initDeleteComment() {
     });
 }
 
-// ============================================
-// ВЫБОР КАЧЕСТВА ВИДЕО
-// ============================================
+/* ============================================
+   ВЫБОР КАЧЕСТВА ВИДЕО
+============================================ */
+
 function initQualitySelector() {
     var qualityMenu = document.getElementById('qualityMenu');
     var qualityBtn = document.getElementById('qualityBtn');
@@ -955,15 +937,15 @@ function initQualitySelector() {
             qualityBtns.forEach(function(b) { b.classList.remove('active'); });
             btn.classList.add('active');
             qualityBtn.textContent = '⚙️ ' + quality;
-
             showToast('Качество: ' + quality, 'info');
         });
     });
 }
 
-// ============================================
-// РЕАКЦИИ НА КОММЕНТАРИИ
-// ============================================
+/* ============================================
+   РЕАКЦИИ НА КОММЕНТАРИИ
+============================================ */
+
 function initCommentReactions() {
     document.addEventListener('click', function(e) {
         var btn = e.target.closest('.comment-react-btn');
@@ -971,10 +953,9 @@ function initCommentReactions() {
 
         e.preventDefault();
 
-        var url = btn.dataset.url;
         var commentId = btn.dataset.commentId;
 
-        fetch(url, {
+        fetch(btn.dataset.url, {
             method: 'POST',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
@@ -994,7 +975,6 @@ function initCommentReactions() {
                     likeBtn.classList.remove('active');
                     likeBtn.querySelector('.like-count').textContent = data.likes;
                 }
-
                 if (dislikeBtn) {
                     dislikeBtn.classList.remove('active');
                     dislikeBtn.querySelector('.dislike-count').textContent = data.dislikes;
@@ -1004,15 +984,14 @@ function initCommentReactions() {
                 else if (data.user_reaction === 'dislike' && dislikeBtn) dislikeBtn.classList.add('active');
             }
         })
-        .catch(function(err) {
-            console.error(err);
-        });
+        .catch(function(err) { console.error(err); });
     });
 }
 
-// ============================================
-// ОТВЕТЫ НА КОММЕНТАРИИ
-// ============================================
+/* ============================================
+   ОТВЕТЫ НА КОММЕНТАРИИ
+============================================ */
+
 function initCommentReplies() {
     document.addEventListener('click', function(e) {
         var btn = e.target.closest('.comment-reply-toggle');
@@ -1024,7 +1003,6 @@ function initCommentReplies() {
         if (formWrap) {
             var isVisible = formWrap.style.display !== 'none';
             formWrap.style.display = isVisible ? 'none' : 'block';
-
             if (!isVisible) {
                 var input = formWrap.querySelector('.reply-input');
                 if (input) input.focus();
@@ -1037,17 +1015,15 @@ function initCommentReplies() {
         if (!form) return;
 
         e.preventDefault();
-
         if (!form.dataset.commentId) return;
 
         var input = form.querySelector('.reply-input');
         var text = input ? input.value.trim() : '';
-        var url = form.dataset.url;
         var commentId = form.dataset.commentId;
 
         if (!text) return;
 
-        fetch(url, {
+        fetch(form.dataset.url, {
             method: 'POST',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
@@ -1071,7 +1047,6 @@ function initCommentReplies() {
                                 '<span class="c-text">' + escapeHtml(data.reply.text) + '</span>' +
                             '</div>' +
                         '</div>';
-
                     repliesList.insertAdjacentHTML('beforeend', html);
                 }
 
@@ -1080,7 +1055,9 @@ function initCommentReplies() {
                 var formWrap = document.getElementById('reply-form-' + commentId);
                 if (formWrap) formWrap.style.display = 'none';
 
-                var toggleBtn = document.querySelector('.comment-reply-toggle[data-comment-id="' + commentId + '"]');
+                var toggleBtn = document.querySelector(
+                    '.comment-reply-toggle[data-comment-id="' + commentId + '"]'
+                );
                 if (toggleBtn) {
                     var count = repliesList ? repliesList.children.length : 1;
                     toggleBtn.textContent = '💬 Ответить (' + count + ')';
@@ -1096,22 +1073,19 @@ function initCommentReplies() {
     });
 }
 
-// ============================================
-// УДАЛЕНИЕ ОТВЕТА
-// ============================================
+/* ============================================
+   УДАЛЕНИЕ ОТВЕТА
+============================================ */
+
 function initDeleteReply() {
     document.addEventListener('click', function(e) {
         var btn = e.target.closest('.btn-delete-reply');
         if (!btn) return;
 
         e.preventDefault();
-
         if (!confirm('Удалить ответ?')) return;
 
-        var url = btn.dataset.url;
-        var replyId = btn.dataset.replyId;
-
-        fetch(url, {
+        fetch(btn.dataset.url, {
             method: 'POST',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
@@ -1124,9 +1098,7 @@ function initDeleteReply() {
                 var reply = document.getElementById('reply-' + data.reply_id);
                 if (reply) {
                     reply.classList.add('deleting');
-                    setTimeout(function() {
-                        reply.remove();
-                    }, 300);
+                    setTimeout(function() { reply.remove(); }, 300);
                 }
                 showToast('Ответ удалён', 'info');
             }
@@ -1135,24 +1107,5 @@ function initDeleteReply() {
             console.error(err);
             showToast('Ошибка', 'danger');
         });
-    });
-}
-
-function initQuickMoodButtons() {
-    document.addEventListener('click', function(e) {
-        var btn = e.target.closest('.quick-mood-btn');
-        if (!btn) return;
-
-        var mood = btn.dataset.moodTarget;
-        var tab = document.querySelector('.mood-tab[data-mood="' + mood + '"]');
-        var browse = document.getElementById('browseSection');
-
-        if (tab) {
-            tab.click();
-        }
-
-        if (browse) {
-            browse.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
     });
 }
