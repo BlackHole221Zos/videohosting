@@ -3,30 +3,24 @@
 import os
 from flask import Flask, g, session
 from config import Config
-from app.extensions import db, mail
+from app.extensions import db, mail, csrf
 
 
 def create_app(config_class=Config):
-    """Фабрика приложения Flask"""
-
     app = Flask(__name__)
     app.config.from_object(config_class)
+
+    # ✅ Автосоздание всех нужных папок
+    os.makedirs(os.path.join(app.root_path, '..', 'instance'), exist_ok=True)
+    os.makedirs(os.path.join(app.static_folder, 'uploads', 'videos'), exist_ok=True)
+    os.makedirs(os.path.join(app.static_folder, 'uploads', 'avatars'), exist_ok=True)
+    os.makedirs(os.path.join(app.static_folder, 'uploads', 'thumbnails'), exist_ok=True)
+    os.makedirs(os.path.join(app.static_folder, 'docs'), exist_ok=True)
 
     # Инициализация расширений
     db.init_app(app)
     mail.init_app(app)
-
-    # Создание папок для загрузок
-    upload_paths = [
-        os.path.join(app.config['UPLOAD_FOLDER'], 'avatars'),
-        os.path.join(app.config['UPLOAD_FOLDER'], 'videos'),
-        os.path.join(app.config['UPLOAD_FOLDER'], 'thumbnails')
-    ]
-    for path in upload_paths:
-        os.makedirs(path, exist_ok=True)
-
-    # Папка для документов
-    os.makedirs(os.path.join(app.static_folder, 'docs'), exist_ok=True)
+    csrf.init_app(app)
 
     # Загрузка текущего пользователя
     @app.before_request
@@ -60,7 +54,7 @@ def create_app(config_class=Config):
     from app.models import init_db
     init_db(app)
 
-    # Генерация PDF (безопасно)
+    # Генерация PDF
     try:
         with app.app_context():
             from app.utils.pdf_generator import generate_legal_pdfs

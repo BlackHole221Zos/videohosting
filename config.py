@@ -1,37 +1,37 @@
 # config.py
 
 import os
-from dotenv import load_dotenv
 
-# Загрузка переменных из .env
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
+# ✅ Автосоздание instance/
+os.makedirs(os.path.join(basedir, 'instance'), exist_ok=True)
+
 class Config:
-    # Секретный ключ для сессий
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'lampix-super-secret-key-2025'
 
-    # База данных SQLite
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-                              'sqlite:///' + os.path.join(basedir, 'instance', 'lampix.db')
+    SQLALCHEMY_DATABASE_URI = (
+        os.environ.get('DATABASE_URL') or
+        'sqlite:///' + os.path.join(basedir, 'instance', 'lampix.db')
+    )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # Папка для загрузок
     UPLOAD_FOLDER = os.path.join(basedir, 'app', 'static', 'uploads')
 
-    # Максимальный размер файла (100 MB)
-    MAX_CONTENT_LENGTH = 100 * 1024 * 1024
+    MAX_CONTENT_LENGTH = 2 * 1024 * 1024 * 1024  # 2GB
 
-    # Разрешённые расширения
     ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv', 'webm'}
     ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-
-    # ============ НАСТРОЙКИ EMAIL ============
 
     MAIL_SERVER = 'smtp.gmail.com'
     MAIL_PORT = 587
     MAIL_USE_TLS = True
-    MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
-    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
-    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_USERNAME')
+    MAIL_USERNAME = os.environ.get('MAIL_USERNAME') or ''
+    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD') or ''
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_USERNAME') or 'noreply@lampix.ru'
