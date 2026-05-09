@@ -3,6 +3,10 @@
 
 {% block title %}Мои подписки — VidSphere{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="subscriptions-page">
     <h1>📺 Мои подписки</h1>

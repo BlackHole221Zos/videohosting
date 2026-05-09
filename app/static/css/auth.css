@@ -1,0 +1,38 @@
+/* app/static/css/auth.css */
+
+.auth-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: 40px;
+    box-shadow: var(--shadow-soft);
+}
+
+.auth-card h1 {
+    text-align: center;
+    margin-bottom: 28px;
+    color: var(--text-primary);
+}
+
+.auth-subtitle {
+    text-align: center;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    font-size: 0.9rem;
+}
+
+.auth-footer {
+    text-align: center;
+    color: var(--text-secondary);
+    margin-top: 24px;
+    font-size: 0.9rem;
+}

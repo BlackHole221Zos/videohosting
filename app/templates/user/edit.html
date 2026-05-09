@@ -1,8 +1,11 @@
 <!-- app/templates/user/edit.html -->
 {% extends "base.html" %}
 
-{% block title %}Редактирование профиля — VidSphere{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
 
+{% block title %}Редактирование профиля — VidSphere{% endblock %}
 {% block content %}
 <div class="edit-page">
     <div class="edit-card">

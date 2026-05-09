@@ -1,6 +1,10 @@
 <!-- app/templates/video/upload.html -->
 {% extends "base.html" %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/upload.css') }}">
+{% endblock %}
+
 {% block title %}Загрузить видео — Lampix{% endblock %}
 
 {% block content %}

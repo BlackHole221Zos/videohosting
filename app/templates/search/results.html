@@ -1,6 +1,10 @@
 <!-- app/templates/search/results.html -->
 {% extends "base.html" %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
+{% endblock %}
+
 {% block title %}Поиск: {{ query }} — VidSphere{% endblock %}
 
 {% block content %}

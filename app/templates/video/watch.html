@@ -1,6 +1,10 @@
 <!-- app/templates/video/watch.html -->
 {% extends "base.html" %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">
+{% endblock %}
+
 {% block title %}{{ video.title }} — VidSphere{% endblock %}
 
 {% block content %}

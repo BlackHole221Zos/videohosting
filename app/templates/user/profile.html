@@ -1,6 +1,10 @@
 <!-- app/templates/user/profile.html -->
 {% extends "base.html" %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
+
 {% block title %}{{ profile_user.username }} — VidSphere{% endblock %}
 
 {% block content %}

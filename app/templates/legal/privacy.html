@@ -1,6 +1,10 @@
 <!-- app/templates/legal/privacy.html -->
 {% extends "base.html" %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/history.css') }}">
+{% endblock %}
+
 {% block title %}Политика конфиденциальности — Lampix{% endblock %}
 
 {% block content %}

@@ -1,6 +1,6 @@
 <!-- app/templates/partials/video_card.html -->
-<div class="video-card">
-    <a href="{{ url_for('video.watch', video_id=video.id) }}">
+<article class="video-card">
+    <a href="{{ url_for('video.watch', video_id=video.id) }}" class="video-card-link">
         <div class="video-thumb">
             <img
                 src="{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}"
@@ -10,13 +10,19 @@
             <span class="video-mood-badge">{{ video.mood_emoji() }}</span>
             <span class="video-views-badge">{{ video.views }} 👁️</span>
         </div>
+
         <div class="video-info">
+            <div class="video-topline">
+                <span class="video-author">@{{ video.author.username }}</span>
+                <span class="video-date">{{ video.created_at.strftime('%d.%m.%Y') }}</span>
+            </div>
+
             <h3 class="video-title">{{ video.title }}</h3>
-            <p class="video-author">{{ video.author.username }}</p>
+
             <div class="video-meta">
-                <span>{{ video.created_at.strftime('%d.%m.%Y') }}</span>
-                <span class="karma">{{ video.karma }} 🔥</span>
+                <span class="video-stat">{{ video.views }} просмотров</span>
+                <span class="video-stat karma">{{ video.karma }} 🔥</span>
             </div>
         </div>
     </a>
-</div>
+</article>

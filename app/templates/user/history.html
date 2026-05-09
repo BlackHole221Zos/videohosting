@@ -1,6 +1,10 @@
 <!-- app/templates/user/history.html -->
 {% extends "base.html" %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/history.css') }}">
+{% endblock %}
+
 {% block title %}История просмотров — VidSphere{% endblock %}
 
 {% block content %}

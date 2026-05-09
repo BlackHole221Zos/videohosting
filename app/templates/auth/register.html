@@ -1,6 +1,10 @@
 <!-- app/templates/auth/register.html -->
 {% extends "base.html" %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+{% endblock %}
+
 {% block title %}Регистрация — Lampix{% endblock %}
 
 {% block content %}

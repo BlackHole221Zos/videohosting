@@ -1,6 +1,10 @@
 <!-- app/templates/legal/terms.html -->
 {% extends "base.html" %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/legal.css') }}">
+{% endblock %}
+
 {% block title %}Пользовательское соглашение — Lampix{% endblock %}
 
 {% block content %}
