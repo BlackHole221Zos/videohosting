@@ -85,13 +85,21 @@
                 <div class="hero-carousel" id="heroCarousel">
                     {% if hero_videos %}
                         {% for video in hero_videos[:4] %}
+                            {% set preview_qualities = video.get_qualities() %}
+                            {% set preview_filename = preview_qualities.get('480p') or preview_qualities.get('720p') or preview_qualities.get('1080p') or video.filename %}
                             <div class="hero-slide {% if loop.first %}active{% endif %}">
                                 <a href="{{ url_for('video.watch', video_id=video.id) }}">
-                                    <img
-                                        src="{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}"
-                                        alt="{{ video.title }}"
-                                        onerror="this.src='{{ url_for('static', filename='img/default_thumb.svg') }}'"
+                                    <video
+                                        class="hero-video"
+                                        muted
+                                        playsinline
+                                        loop
+                                        preload="metadata"
+                                        poster="{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}"
                                     >
+                                        <source src="{{ url_for('static', filename='uploads/videos/' + preview_filename) }}" type="video/mp4">
+                                    </video>
+
                                     <div class="hero-overlay">
                                         <div class="hero-chip-row">
                                             <span class="hero-chip">{{ video.mood_emoji() }}</span>
@@ -179,7 +187,6 @@
 
         <div class="overview-preview">
 
-            <!-- Новое -->
             <div class="overview-panel active" data-overview-panel="new">
                 <div class="overview-panel-head">
                     <div>
@@ -217,7 +224,6 @@
                 {% endif %}
             </div>
 
-            <!-- В тренде -->
             <div class="overview-panel" data-overview-panel="trending">
                 <div class="overview-panel-head">
                     <div>
@@ -255,7 +261,6 @@
                 {% endif %}
             </div>
 
-            <!-- Настроения -->
             <div class="overview-panel" data-overview-panel="moods">
                 <div class="overview-panel-head">
                     <div>
@@ -284,7 +289,6 @@
                 </div>
             </div>
 
-            <!-- Топ -->
             <div class="overview-panel" data-overview-panel="top">
                 <div class="overview-panel-head">
                     <div>
@@ -351,7 +355,6 @@
 
         <div class="videos-section">
 
-            <!-- Подборка -->
             <div class="mood-panel active" data-mood="all">
                 <div class="panel-shell">
                     <div class="panel-head">
@@ -381,7 +384,6 @@
                 </div>
             </div>
 
-            <!-- Новое -->
             <div class="mood-panel" data-mood="new">
                 <div class="panel-shell">
                     <div class="panel-head">
@@ -406,7 +408,6 @@
                 </div>
             </div>
 
-            <!-- В тренде -->
             <div class="mood-panel" data-mood="trending">
                 <div class="panel-shell">
                     <div class="panel-head">
@@ -431,7 +432,6 @@
                 </div>
             </div>
 
-            <!-- По настроениям -->
             {% for mood_key, mood_data in moods.items() %}
                 <div class="mood-panel" data-mood="{{ mood_key }}">
                     <div class="panel-shell">
@@ -461,9 +461,6 @@
         </div>
     </section>
 
-    <!-- ==========================================
-         ПЕРСОНАЛЬНЫЕ РЕКОМЕНДАЦИИ
-    ========================================== -->
     {% if user and recommended %}
         <section class="recommendations-section" id="recommendationsSection">
             <div class="panel-shell">

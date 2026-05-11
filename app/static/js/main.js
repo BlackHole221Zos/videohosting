@@ -72,45 +72,79 @@ function initHeroCarousel() {
 
     var slides = carousel.querySelectorAll('.hero-slide');
     var dots = document.querySelectorAll('.hero-dot');
-    if (slides.length <= 1) return;
+    if (slides.length === 0) return;
 
     var currentIndex = 0;
     var interval = null;
+    var SLIDE_DURATION = 4000; // 4 секунды на слайд
+
+    function syncVideos() {
+        slides.forEach(function(slide, index) {
+            var video = slide.querySelector('.hero-video');
+            if (!video) return;
+
+            if (index === currentIndex) {
+                video.muted = true;
+                video.currentTime = 0;
+
+                var playPromise = video.play();
+                if (playPromise && typeof playPromise.catch === 'function') {
+                    playPromise.catch(function() {});
+                }
+            } else {
+                video.pause();
+                video.currentTime = 0;
+            }
+        });
+    }
 
     function goToSlide(index) {
-        slides.forEach(function(slide) { slide.classList.remove('active'); });
-        dots.forEach(function(dot) { dot.classList.remove('active'); });
+        slides.forEach(function(slide) {
+            slide.classList.remove('active');
+        });
+
+        dots.forEach(function(dot) {
+            dot.classList.remove('active');
+        });
 
         currentIndex = index;
+
         if (currentIndex >= slides.length) currentIndex = 0;
         if (currentIndex < 0) currentIndex = slides.length - 1;
 
         slides[currentIndex].classList.add('active');
-        if (dots[currentIndex]) dots[currentIndex].classList.add('active');
+
+        if (dots[currentIndex]) {
+            dots[currentIndex].classList.add('active');
+        }
+
+        syncVideos();
     }
 
-    function nextSlide() { goToSlide(currentIndex + 1); }
+    function nextSlide() {
+        goToSlide(currentIndex + 1);
+    }
 
     function startAutoplay() {
         stopAutoplay();
-        interval = setInterval(nextSlide, 5000);
+        interval = setInterval(nextSlide, SLIDE_DURATION);
     }
 
     function stopAutoplay() {
-        if (interval) clearInterval(interval);
+        if (interval) {
+            clearInterval(interval);
+            interval = null;
+        }
     }
 
     dots.forEach(function(dot, index) {
         dot.addEventListener('click', function() {
-            stopAutoplay();
             goToSlide(index);
             startAutoplay();
         });
     });
 
-    carousel.addEventListener('mouseenter', stopAutoplay);
-    carousel.addEventListener('mouseleave', startAutoplay);
-
+    goToSlide(0);
     startAutoplay();
 }
 

@@ -393,3 +393,5 @@ build/
 
 # Backup files
 *.backup
+
+demo_videos/
