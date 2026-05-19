@@ -1,5 +1,4 @@
 # app/models.py
-
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import db
@@ -7,17 +6,16 @@ from app.extensions import db
 import secrets
 from datetime import timedelta
 
-# ============ ТАБЛИЦА ПОДПИСОК (many-to-many) ============
 
+# ============ ТАБЛИЦА ПОДПИСОК (many-to-many) ============
 subscriptions = db.Table('subscriptions',
-                         db.Column('follower_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
-                         db.Column('following_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
-                         db.Column('created_at', db.DateTime, default=datetime.utcnow)
-                         )
+    db.Column('follower_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+    db.Column('following_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+    db.Column('created_at', db.DateTime, default=datetime.utcnow)
+)
 
 
 # ============ ПОЛЬЗОВАТЕЛЬ ============
-
 class User(db.Model):
     __tablename__ = 'user'
 
@@ -86,28 +84,36 @@ class User(db.Model):
         return f'<User {self.username}>'
 
 
-# ============ ВИДЕО ============
-
+# ============ ВИДЕО (обновлено) ============
 class Video(db.Model):
     __tablename__ = 'video'
 
-    qualities = db.Column(db.Text, default='{}')
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, default='')
     filename = db.Column(db.String(255), nullable=False)
     thumbnail = db.Column(db.String(255), default='default_thumb.jpg')
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+
+    # === Новые поля для внешних видео ===
+    video_type = db.Column(db.String(20), default='uploaded')   # 'uploaded' или 'external'
+    external_url = db.Column(db.String(500), nullable=True)
+    platform = db.Column(db.String(50), nullable=True)
+
     mood = db.Column(db.String(50), default='inspiration')
     tags = db.Column(db.String(500), default='')
     visibility = db.Column(db.String(20), default='public')
     views = db.Column(db.Integer, default=0)
     karma = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    qualities = db.Column(db.Text, default='{}')
 
     comments = db.relationship('Comment', backref='video', lazy='dynamic', cascade='all, delete-orphan')
     reactions = db.relationship('Reaction', backref='video', lazy='dynamic', cascade='all, delete-orphan')
     watch_history = db.relationship('WatchHistory', backref='video', lazy='dynamic', cascade='all, delete-orphan')
+
+    def is_external(self):
+        return self.video_type == 'external'
 
     def get_tags_list(self):
         if self.tags:
@@ -141,9 +147,7 @@ class Video(db.Model):
 
     def recalculate_karma(self):
         karma_values = {'fire': 3, 'good': 1, 'bad': -1}
-        total = 0
-        for reaction in self.reactions:
-            total += karma_values.get(reaction.reaction_type, 0)
+        total = sum(karma_values.get(r.reaction_type, 0) for r in self.reactions)
         self.karma = total
         return self.karma
 
@@ -162,21 +166,18 @@ class Video(db.Model):
         return self.filename
 
     def __repr__(self):
-        return f'<Video {self.title}>'
+        return f'<Video {self.title} [{self.video_type}]>'
 
 
-# ============ КОММЕНТАРИЙ ============
-
+# Остальные классы без изменений
 class Comment(db.Model):
     __tablename__ = 'comment'
-
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.Text, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # 🆕 Связи с ответами и реакциями
     replies = db.relationship('CommentReply', backref='comment', lazy='dynamic', cascade='all, delete-orphan')
     comment_reactions = db.relationship('CommentReaction', backref='comment', lazy='dynamic', cascade='all, delete-orphan')
 
@@ -189,54 +190,31 @@ class Comment(db.Model):
     def replies_count(self):
         return self.replies.count()
 
-    def __repr__(self):
-        return f'<Comment by {self.author.username}>'
-
-
-# ============ 🆕 ОТВЕТ НА КОММЕНТАРИЙ ============
 
 class CommentReply(db.Model):
-    """Ответ на комментарий"""
-
     __tablename__ = 'comment_reply'
-
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.Text, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     comment_id = db.Column(db.Integer, db.ForeignKey('comment.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    def __repr__(self):
-        return f'<CommentReply by {self.author.username}>'
-
-
-# ============ 🆕 РЕАКЦИЯ НА КОММЕНТАРИЙ ============
 
 class CommentReaction(db.Model):
-    """Реакция на комментарий (лайк/дизлайк)"""
-
     __tablename__ = 'comment_reaction'
-
     id = db.Column(db.Integer, primary_key=True)
-    reaction_type = db.Column(db.String(10), nullable=False)  # like / dislike
+    reaction_type = db.Column(db.String(10), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     comment_id = db.Column(db.Integer, db.ForeignKey('comment.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # 1 реакция от 1 юзера на 1 комментарий
     __table_args__ = (
         db.UniqueConstraint('user_id', 'comment_id', name='unique_user_comment_reaction'),
     )
 
-    def __repr__(self):
-        return f'<CommentReaction {self.reaction_type}>'
-
-
-# ============ РЕАКЦИЯ НА ВИДЕО (КАРМА) ============
 
 class Reaction(db.Model):
     __tablename__ = 'reaction'
-
     id = db.Column(db.Integer, primary_key=True)
     reaction_type = db.Column(db.String(10), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -247,33 +225,17 @@ class Reaction(db.Model):
         db.UniqueConstraint('user_id', 'video_id', name='unique_user_video_reaction'),
     )
 
-    def karma_value(self):
-        values = {'fire': 3, 'good': 1, 'bad': -1}
-        return values.get(self.reaction_type, 0)
-
-    def __repr__(self):
-        return f'<Reaction {self.reaction_type}>'
-
-
-# ============ ИСТОРИЯ ПРОСМОТРОВ ============
 
 class WatchHistory(db.Model):
     __tablename__ = 'watch_history'
-
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False)
     watched_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    def __repr__(self):
-        return f'<WatchHistory user={self.user_id} video={self.video_id}>'
-
-
-# ============ ТОКЕН ВОССТАНОВЛЕНИЯ ПАРОЛЯ ============
 
 class PasswordResetToken(db.Model):
     __tablename__ = 'password_reset_token'
-
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     token = db.Column(db.String(100), unique=True, nullable=False, index=True)
@@ -303,26 +265,20 @@ class PasswordResetToken(db.Model):
     @staticmethod
     def verify_token(token_string):
         token = PasswordResetToken.query.filter_by(token=token_string).first()
-        if not token:
-            return None
-        if token.is_expired():
-            db.session.delete(token)
-            db.session.commit()
+        if not token or token.is_expired():
+            if token:
+                db.session.delete(token)
+                db.session.commit()
             return None
         return token.user
 
-    def __repr__(self):
-        return f'<PasswordResetToken user={self.user.username}>'
-
 
 # ============ ИНИЦИАЛИЗАЦИЯ БД ============
-
 def init_db(app):
     with app.app_context():
         db.create_all()
 
         admin = User.query.filter_by(role='admin').first()
-
         if not admin:
             admin = User(
                 username='admin',

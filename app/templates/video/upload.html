@@ -12,117 +12,246 @@
     <div class="upload-card">
         <h1>📤 Загрузить видео</h1>
 
-        <form method="POST" enctype="multipart/form-data" class="upload-form" id="uploadForm">
-            {{ form.hidden_tag() }}
+        <!-- Вкладки -->
+        <div class="upload-tabs">
+            <button class="upload-tab active" data-tab="file">
+                📁 Файл с компьютера
+            </button>
+            <button class="upload-tab" data-tab="url">
+                🔗 Импорт по ссылке
+            </button>
+        </div>
 
-            <div class="form-group">
-                <label for="title">Название *</label>
-                {{ form.title(class="form-input", placeholder="Название вашего видео") }}
-                {% if form.title.errors %}
-                    <span class="form-error">{{ form.title.errors[0] }}</span>
-                {% endif %}
-            </div>
+        <!-- ============================
+             ВКЛАДКА: ФАЙЛ
+        ============================= -->
+        <div class="upload-tab-panel active" id="tab-file">
+            <form method="POST"
+                  enctype="multipart/form-data"
+                  class="upload-form"
+                  id="uploadForm"
+                  action="{{ url_for('video.upload') }}">
+                {{ form.hidden_tag() }}
 
-            <div class="form-group">
-                <label for="description">Описание</label>
-                {{ form.description(class="form-input form-textarea", rows=4, placeholder="О чём это видео?") }}
-                {% if form.description.errors %}
-                    <span class="form-error">{{ form.description.errors[0] }}</span>
-                {% endif %}
-            </div>
-
-            <!-- Видео файл -->
-            <div class="form-group">
-                <label>Видео файл *</label>
-                <div class="file-upload">
-                    {{ form.video(class="file-input", id="videoInput", accept="video/*") }}
-                    <label for="videoInput" class="file-label">
-                        <span class="file-icon">🎬</span>
-                        <span class="file-text">Выберите видео или перетащите сюда</span>
-                        <span class="file-hint">MP4, AVI, MOV, MKV, WebM (до 100 MB)</span>
-                    </label>
-                </div>
-                {% if form.video.errors %}
-                    <span class="form-error">{{ form.video.errors[0] }}</span>
-                {% endif %}
-            </div>
-
-            <!-- Обложка -->
-            <div class="form-group">
-                <label>Обложка видео</label>
-                <div class="thumbnail-choice">
-                    <label class="radio-card active" data-target="auto">
-                        <input type="radio" name="thumb_mode" value="auto" checked>
-                        <div class="radio-card-body">
-                            <span class="radio-icon">🤖</span>
-                            <span class="radio-title">Автоматически</span>
-                            <span class="radio-desc">Первый кадр видео</span>
-                        </div>
-                    </label>
-                    <label class="radio-card" data-target="custom">
-                        <input type="radio" name="thumb_mode" value="custom">
-                        <div class="radio-card-body">
-                            <span class="radio-icon">🖼️</span>
-                            <span class="radio-title">Своя обложка</span>
-                            <span class="radio-desc">JPG, PNG, WebP</span>
-                        </div>
-                    </label>
+                <div class="form-group">
+                    <label>Название *</label>
+                    {{ form.title(class="form-input", placeholder="Название вашего видео") }}
+                    {% if form.title.errors %}
+                        <span class="form-error">{{ form.title.errors[0] }}</span>
+                    {% endif %}
                 </div>
 
-                <div class="custom-thumb-upload" id="customThumbUpload" style="display: none;">
+                <div class="form-group">
+                    <label>Описание</label>
+                    {{ form.description(class="form-input form-textarea", rows=4, placeholder="О чём это видео?") }}
+                </div>
+
+                <div class="form-group">
+                    <label>Видео файл *</label>
                     <div class="file-upload">
-                        {{ form.thumbnail(class="file-input", id="thumbInput", accept="image/*") }}
-                        <label for="thumbInput" class="file-label file-label-sm">
-                            <span class="file-icon">🖼️</span>
-                            <span class="file-text" id="thumbFileName">Выберите изображение</span>
+                        {{ form.video(class="file-input", id="videoInput", accept="video/*") }}
+                        <label for="videoInput" class="file-label">
+                            <span class="file-icon">🎬</span>
+                            <span class="file-text">Выберите видео или перетащите сюда</span>
+                            <span class="file-hint">MP4, AVI, MOV, MKV, WebM (до 100 MB)</span>
                         </label>
                     </div>
-                    <div class="thumb-preview" id="thumbPreview" style="display: none;">
-                        <img id="thumbPreviewImg" src="" alt="Превью">
+                    {% if form.video.errors %}
+                        <span class="form-error">{{ form.video.errors[0] }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label>Обложка</label>
+                    <div class="thumbnail-choice">
+                        <label class="radio-card active" data-target="auto">
+                            <input type="radio" name="thumb_mode" value="auto" checked>
+                            <div class="radio-card-body">
+                                <span class="radio-icon">🤖</span>
+                                <span class="radio-title">Автоматически</span>
+                                <span class="radio-desc">Первый кадр видео</span>
+                            </div>
+                        </label>
+                        <label class="radio-card" data-target="custom">
+                            <input type="radio" name="thumb_mode" value="custom">
+                            <div class="radio-card-body">
+                                <span class="radio-icon">🖼️</span>
+                                <span class="radio-title">Своя обложка</span>
+                                <span class="radio-desc">JPG, PNG, WebP</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="custom-thumb-upload" id="customThumbUpload" style="display: none;">
+                        <div class="file-upload">
+                            {{ form.thumbnail(class="file-input", id="thumbInput", accept="image/*") }}
+                            <label for="thumbInput" class="file-label file-label-sm">
+                                <span class="file-icon">🖼️</span>
+                                <span class="file-text" id="thumbFileName">Выберите изображение</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
-                {% if form.thumbnail.errors %}
-                    <span class="form-error">{{ form.thumbnail.errors[0] }}</span>
-                {% endif %}
-            </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="mood">Настроение *</label>
-                    {{ form.mood(class="form-input form-select") }}
-                    {% if form.mood.errors %}
-                        <span class="form-error">{{ form.mood.errors[0] }}</span>
-                    {% endif %}
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Настроение *</label>
+                        {{ form.mood(class="form-input form-select") }}
+                    </div>
+                    <div class="form-group">
+                        <label>Доступ *</label>
+                        {{ form.visibility(class="form-input form-select") }}
+                    </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="visibility">Доступ *</label>
-                    {{ form.visibility(class="form-input form-select") }}
-                    {% if form.visibility.errors %}
-                        <span class="form-error">{{ form.visibility.errors[0] }}</span>
-                    {% endif %}
+                    <label>Теги</label>
+                    {{ form.tags(class="form-input", placeholder="игры, музыка, влог") }}
+                    <small class="form-hint">Через запятую</small>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block" id="uploadBtn">
+                    🚀 Загрузить
+                </button>
+
+                <div id="upload-progress" style="display: none; margin-top: 20px;">
+                    <div class="upload-progress-bar">
+                        <div class="upload-progress-fill"></div>
+                    </div>
+                    <p class="upload-progress-text">⚙️ Загрузка и конвертация... Пожалуйста, подождите</p>
+                </div>
+            </form>
+        </div>
+
+        <!-- ============================
+             ВКЛАДКА: ССЫЛКА
+        ============================= -->
+        <div class="upload-tab-panel" id="tab-url">
+
+            <!-- Шаг 1: вставить ссылку -->
+            <div id="url-step-1">
+                <div class="url-import-info">
+                    <p>
+                        Вставь ссылку на видео с любого поддерживаемого сервиса.
+                        Мы автоматически заполним название и описание.
+                    </p>
+                    <div class="url-supported">
+                        <span>YouTube</span>
+                        <span>VK</span>
+                        <span>RuTube</span>
+                        <span>Vimeo</span>
+                        <span>TikTok</span>
+                        <span>и ещё 1000+ сервисов</span>
+                    </div>
+                </div>
+
+                <div class="url-input-wrap">
+                    <input
+                        type="url"
+                        id="videoUrlInput"
+                        class="form-input url-input"
+                        placeholder="https://youtube.com/watch?v=..."
+                        autocomplete="off"
+                    >
+                    <button type="button" class="btn btn-primary" id="checkUrlBtn">
+                        🔍 Проверить
+                    </button>
+                </div>
+
+                <div id="url-check-error" class="url-check-error" style="display: none;"></div>
+                <div id="url-check-loading" class="url-check-loading" style="display: none;">
+                    ⏳ Получаю информацию о видео...
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="tags">Теги</label>
-                {{ form.tags(class="form-input", placeholder="игры, музыка, влог") }}
-                <small class="form-hint">Через запятую</small>
-                {% if form.tags.errors %}
-                    <span class="form-error">{{ form.tags.errors[0] }}</span>
-                {% endif %}
+            <!-- Шаг 2: форма с автозаполнением -->
+            <div id="url-step-2" style="display: none;">
+
+                <div class="url-video-preview">
+                    <div class="url-video-meta">
+                        <span id="urlVideoSource" class="url-video-source"></span>
+                        <span id="urlVideoUploader" class="url-video-uploader"></span>
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm" id="urlChangeBtn">
+                        ← Изменить ссылку
+                    </button>
+                </div>
+
+                <form method="POST"
+                      class="upload-form"
+                      id="urlUploadForm"
+                      action="{{ url_for('video.upload_from_url') }}">
+                    <input type="hidden" name="url" id="urlHidden">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="form-group">
+                        <label>Название *</label>
+                        <input type="text"
+                               name="title"
+                               id="urlTitle"
+                               class="form-input"
+                               placeholder="Название видео"
+                               required
+                               maxlength="200">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Описание</label>
+                        <textarea name="description"
+                                  id="urlDescription"
+                                  class="form-input form-textarea"
+                                  rows="4"
+                                  placeholder="Описание видео"
+                                  maxlength="2000"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Настроение *</label>
+                            <select name="mood" class="form-input form-select" required>
+                                <option value="inspiration">✨ Вдохновение</option>
+                                <option value="laugh">😂 Смех</option>
+                                <option value="knowledge">🧠 Знания</option>
+                                <option value="peace">🌸 Покой</option>
+                                <option value="adrenaline">⚡ Адреналин</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Доступ *</label>
+                            <select name="visibility" class="form-input form-select" required>
+                                <option value="public">🌍 Публичное</option>
+                                <option value="unlisted">🔗 По ссылке</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Теги</label>
+                        <input type="text"
+                               name="tags"
+                               class="form-input"
+                               placeholder="игры, музыка, влог"
+                               maxlength="500">
+                        <small class="form-hint">Через запятую</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block" id="urlUploadBtn">
+                        🔗 Импортировать видео
+                    </button>
+
+                    <div id="url-upload-progress" style="display: none; margin-top: 20px;">
+                        <div class="upload-progress-bar">
+                            <div class="upload-progress-fill"></div>
+                        </div>
+                        <p class="upload-progress-text">
+                            📥 Скачиваем и конвертируем видео... Это может занять несколько минут.
+                        </p>
+                    </div>
+                </form>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-block" id="uploadBtn">🚀 Загрузить</button>
+        </div>
 
-<!-- ИНДИКАТОР ЗАГРУЗКИ/КОНВЕРТАЦИИ -->
-<div id="upload-progress" style="display: none; margin-top: 20px;">
-    <div class="upload-progress-bar">
-        <div class="upload-progress-fill"></div>
-    </div>
-    <p class="upload-progress-text">⚙️ Загрузка и конвертация видео... Пожалуйста, подождите</p>
-</div>
-        </form>
     </div>
 </div>
 {% endblock %}

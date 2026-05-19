@@ -17,6 +17,7 @@
     <meta property="og:type" content="website">
 
     <!-- Базовый CSS -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block extra_css %}{% endblock %}
 </head>

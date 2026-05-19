@@ -57,6 +57,96 @@ def upload():
     return render_template('video/upload.html', form=form)
 
 
+
+# ============ ПРОВЕРКА ССЫЛКИ (AJAX) ============
+
+@video_bp.route('/upload/check-url', methods=['POST'])
+@login_required
+def check_url():
+    """Получить информацию о видео по URL (AJAX)"""
+    from app.utils.url_downloader import get_video_info_from_url
+
+    if not request.is_json and request.headers.get('X-Requested-With') != 'XMLHttpRequest':
+        abort(400)
+
+    data = request.get_json()
+    url = (data or {}).get('url', '').strip()
+
+    if not url:
+        return jsonify({'error': 'Укажите ссылку'}), 400
+
+    if not url.startswith(('http://', 'https://')):
+        return jsonify({'error': 'Некорректная ссылка'}), 400
+
+    info = get_video_info_from_url(url)
+
+    if not info:
+        return jsonify({'error': 'Не удалось получить информацию о видео. Проверьте ссылку.'}), 400
+
+    return jsonify({
+        'success': True,
+        'title': info['title'],
+        'description': info['description'],
+        'duration': info['duration'],
+        'uploader': info['uploader'],
+        'extractor': info['extractor'],
+    })
+
+
+# ============ ИМПОРТ ВИДЕО ПО ССЫЛКЕ ============
+
+@video_bp.route('/upload/from-url', methods=['POST'])
+@login_required
+def upload_from_url():
+    """Загрузка видео по URL"""
+    import json as json_module
+    from app.utils.url_downloader import download_video_from_url
+
+    url = request.form.get('url', '').strip()
+    title = request.form.get('title', '').strip()
+    description = request.form.get('description', '').strip()
+    mood = request.form.get('mood', 'inspiration')
+    tags = request.form.get('tags', '').strip()
+    visibility = request.form.get('visibility', 'public')
+
+    if not url:
+        flash('Укажите ссылку на видео', 'danger')
+        return redirect(url_for('video.upload'))
+
+    if not title:
+        flash('Укажите название видео', 'danger')
+        return redirect(url_for('video.upload'))
+
+    if mood not in ['laugh', 'knowledge', 'peace', 'adrenaline', 'inspiration']:
+        mood = 'inspiration'
+
+    if visibility not in ['public', 'unlisted']:
+        visibility = 'public'
+
+    main_filename, qualities, thumbnail = download_video_from_url(url)
+
+    if not main_filename:
+        flash('Не удалось скачать видео. Проверьте ссылку или попробуйте позже.', 'danger')
+        return redirect(url_for('video.upload'))
+
+    video = Video(
+        title=title[:200],
+        description=description[:2000],
+        filename=main_filename,
+        thumbnail=thumbnail,
+        mood=mood,
+        visibility=visibility,
+        tags=tags[:500],
+        user_id=g.user.id,
+        qualities=json_module.dumps(qualities)
+    )
+
+    db.session.add(video)
+    db.session.commit()
+
+    flash('Видео успешно импортировано!', 'success')
+    return redirect(url_for('video.watch', video_id=video.id))
+
 # ============ ПРОСМОТР ВИДЕО ============
 
 @video_bp.route('/video/<int:video_id>', methods=['GET', 'POST'])

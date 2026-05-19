@@ -22,6 +22,8 @@ document.addEventListener('DOMContentLoaded', function() {
     initCommentReactions();
     initCommentReplies();
     initDeleteReply();
+    initUploadTabs();
+    initUrlImport();
 });
 
 /* ============================================
@@ -1142,4 +1144,156 @@ function initDeleteReply() {
             showToast('Ошибка', 'danger');
         });
     });
+}
+
+/* ============================================
+   ВКЛАДКИ НА СТРАНИЦЕ ЗАГРУЗКИ
+============================================ */
+
+function initUploadTabs() {
+    var tabs = document.querySelectorAll('.upload-tab');
+    var panels = document.querySelectorAll('.upload-tab-panel');
+    if (tabs.length === 0) return;
+
+    tabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            var target = this.dataset.tab;
+
+            tabs.forEach(function(t) { t.classList.remove('active'); });
+            panels.forEach(function(p) { p.classList.remove('active'); });
+
+            this.classList.add('active');
+
+            var panel = document.getElementById('tab-' + target);
+            if (panel) panel.classList.add('active');
+        });
+    });
+}
+
+/* ============================================
+   ИМПОРТ ВИДЕО ПО ССЫЛКЕ
+============================================ */
+
+function initUrlImport() {
+    var checkBtn = document.getElementById('checkUrlBtn');
+    var urlInput = document.getElementById('videoUrlInput');
+    var step1 = document.getElementById('url-step-1');
+    var step2 = document.getElementById('url-step-2');
+    var urlHidden = document.getElementById('urlHidden');
+    var urlTitle = document.getElementById('urlTitle');
+    var urlDescription = document.getElementById('urlDescription');
+    var urlSource = document.getElementById('urlVideoSource');
+    var urlUploader = document.getElementById('urlVideoUploader');
+    var urlError = document.getElementById('url-check-error');
+    var urlLoading = document.getElementById('url-check-loading');
+    var changeBtn = document.getElementById('urlChangeBtn');
+    var urlUploadForm = document.getElementById('urlUploadForm');
+    var urlUploadBtn = document.getElementById('urlUploadBtn');
+    var urlProgress = document.getElementById('url-upload-progress');
+
+    if (!checkBtn || !urlInput) return;
+
+    function showError(msg) {
+        urlError.textContent = msg;
+        urlError.style.display = 'block';
+        urlLoading.style.display = 'none';
+    }
+
+    function hideError() {
+        urlError.style.display = 'none';
+    }
+
+    checkBtn.addEventListener('click', function() {
+        var url = urlInput.value.trim();
+
+        if (!url) {
+            showError('Вставьте ссылку на видео');
+            return;
+        }
+
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            showError('Некорректная ссылка. Должна начинаться с http:// или https://');
+            return;
+        }
+
+        hideError();
+        urlLoading.style.display = 'block';
+        checkBtn.disabled = true;
+        checkBtn.textContent = '⏳ Проверяю...';
+
+var csrfToken = document.querySelector('meta[name="csrf-token"]')
+    ? document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+    : (document.querySelector('input[name="csrf_token"]')
+        ? document.querySelector('input[name="csrf_token"]').value
+        : '');
+
+fetch('/upload/check-url', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRFToken': csrfToken
+    },
+    body: JSON.stringify({ url: url })
+})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            checkBtn.disabled = false;
+            checkBtn.textContent = '🔍 Проверить';
+            urlLoading.style.display = 'none';
+
+            if (!data.success) {
+                showError(data.error || 'Не удалось получить информацию о видео');
+                return;
+            }
+
+            urlHidden.value = url;
+
+            if (urlTitle) urlTitle.value = data.title || '';
+            if (urlDescription) urlDescription.value = data.description || '';
+            if (urlSource) urlSource.textContent = data.extractor || 'Внешний сервис';
+            if (urlUploader) urlUploader.textContent = data.uploader ? 'Автор: ' + data.uploader : '';
+
+            step1.style.display = 'none';
+            step2.style.display = 'block';
+
+            showToast('Информация о видео получена!', 'success');
+        })
+        .catch(function(err) {
+            checkBtn.disabled = false;
+            checkBtn.textContent = '🔍 Проверить';
+            urlLoading.style.display = 'none';
+            showError('Ошибка сети. Попробуйте ещё раз.');
+            console.error(err);
+        });
+    });
+
+    if (changeBtn) {
+        changeBtn.addEventListener('click', function() {
+            step2.style.display = 'none';
+            step1.style.display = 'block';
+            hideError();
+        });
+    }
+
+    if (urlUploadForm) {
+        urlUploadForm.addEventListener('submit', function() {
+            if (urlUploadBtn) {
+                urlUploadBtn.disabled = true;
+                urlUploadBtn.textContent = '⏳ Импортируем...';
+            }
+            if (urlProgress) {
+                urlProgress.style.display = 'block';
+            }
+        });
+    }
+
+    if (urlInput) {
+        urlInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                checkBtn.click();
+            }
+        });
+    }
 }

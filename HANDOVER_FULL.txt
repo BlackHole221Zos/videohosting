@@ -1,0 +1,3739 @@
+================================================================================
+🔥 LAMPiX — ПОЛНЫЙ HANDOVER ДЛЯ ИИ
+Дата сборки: 12.05.2026 10:29
+Цель: Добавление импорта видео по внешней ссылке (yt-dlp)
+================================================================================
+
+
+
+==========================================================================================
+📁 ФАЙЛ: app/models.py
+🔖 СЕКЦИЯ: MODELS
+==========================================================================================
+
+
+# app/models.py
+
+from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
+from app.extensions import db
+
+import secrets
+from datetime import timedelta
+
+# ============ ТАБЛИЦА ПОДПИСОК (many-to-many) ============
+
+subscriptions = db.Table('subscriptions',
+                         db.Column('follower_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+                         db.Column('following_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+                         db.Column('created_at', db.DateTime, default=datetime.utcnow)
+                         )
+
+
+# ============ ПОЛЬЗОВАТЕЛЬ ============
+
+class User(db.Model):
+    __tablename__ = 'user'
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False, index=True)
+    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    password_hash = db.Column(db.String(256), nullable=False)
+    role = db.Column(db.String(20), default='user', nullable=False)
+    avatar = db.Column(db.String(255), default='default_avatar.png')
+    bio = db.Column(db.Text, default='')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Связи
+    videos = db.relationship('Video', backref='author', lazy='dynamic', cascade='all, delete-orphan')
+    comments = db.relationship('Comment', backref='author', lazy='dynamic', cascade='all, delete-orphan')
+    reactions = db.relationship('Reaction', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    watch_history = db.relationship('WatchHistory', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    comment_replies = db.relationship('CommentReply', backref='author', lazy='dynamic', cascade='all, delete-orphan')
+    comment_reactions = db.relationship('CommentReaction', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+
+    following = db.relationship(
+        'User',
+        secondary=subscriptions,
+        primaryjoin=(subscriptions.c.follower_id == id),
+        secondaryjoin=(subscriptions.c.following_id == id),
+        backref=db.backref('followers', lazy='dynamic'),
+        lazy='dynamic'
+    )
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def follow(self, user):
+        if not self.is_following(user) and self.id != user.id:
+            self.following.append(user)
+
+    def unfollow(self, user):
+        if self.is_following(user):
+            self.following.remove(user)
+
+    def is_following(self, user):
+        return self.following.filter(subscriptions.c.following_id == user.id).count() > 0
+
+    def followers_count(self):
+        return self.followers.count()
+
+    def following_count(self):
+        return self.following.count()
+
+    def total_views(self):
+        return sum(video.views for video in self.videos)
+
+    def total_karma(self):
+        return sum(video.karma for video in self.videos)
+
+    def is_admin(self):
+        return self.role == 'admin'
+
+    def is_moderator(self):
+        return self.role in ['admin', 'moderator']
+
+    def __repr__(self):
+        return f'<User {self.username}>'
+
+
+# ============ ВИДЕО ============
+
+class Video(db.Model):
+    __tablename__ = 'video'
+
+    qualities = db.Column(db.Text, default='{}')
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, default='')
+    filename = db.Column(db.String(255), nullable=False)
+    thumbnail = db.Column(db.String(255), default='default_thumb.jpg')
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    mood = db.Column(db.String(50), default='inspiration')
+    tags = db.Column(db.String(500), default='')
+    visibility = db.Column(db.String(20), default='public')
+    views = db.Column(db.Integer, default=0)
+    karma = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    comments = db.relationship('Comment', backref='video', lazy='dynamic', cascade='all, delete-orphan')
+    reactions = db.relationship('Reaction', backref='video', lazy='dynamic', cascade='all, delete-orphan')
+    watch_history = db.relationship('WatchHistory', backref='video', lazy='dynamic', cascade='all, delete-orphan')
+
+    def get_tags_list(self):
+        if self.tags:
+            return [tag.strip() for tag in self.tags.split(',') if tag.strip()]
+        return []
+
+    def hot_score(self):
+        age_hours = (datetime.utcnow() - self.created_at).total_seconds() / 3600
+        age_hours = max(age_hours, 1)
+        return self.karma / (age_hours ** 1.5)
+
+    def mood_emoji(self):
+        moods = {
+            'laugh': '😂',
+            'knowledge': '🧠',
+            'peace': '🌸',
+            'adrenaline': '⚡',
+            'inspiration': '✨'
+        }
+        return moods.get(self.mood, '🎬')
+
+    def mood_name(self):
+        moods = {
+            'laugh': 'Смех',
+            'knowledge': 'Знания',
+            'peace': 'Покой',
+            'adrenaline': 'Адреналин',
+            'inspiration': 'Вдохновение'
+        }
+        return moods.get(self.mood, 'Видео')
+
+    def recalculate_karma(self):
+        karma_values = {'fire': 3, 'good': 1, 'bad': -1}
+        total = 0
+        for reaction in self.reactions:
+            total += karma_values.get(reaction.reaction_type, 0)
+        self.karma = total
+        return self.karma
+
+    def get_qualities(self):
+        import json
+        try:
+            return json.loads(self.qualities) if self.qualities else {}
+        except:
+            return {}
+
+    def get_best_quality_filename(self):
+        qualities = self.get_qualities()
+        for q in ['1080p', '720p', '480p']:
+            if q in qualities:
+                return qualities[q]
+        return self.filename
+
+    def __repr__(self):
+        return f'<Video {self.title}>'
+
+
+# ============ КОММЕНТАРИЙ ============
+
+class Comment(db.Model):
+    __tablename__ = 'comment'
+
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.Text, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # 🆕 Связи с ответами и реакциями
+    replies = db.relationship('CommentReply', backref='comment', lazy='dynamic', cascade='all, delete-orphan')
+    comment_reactions = db.relationship('CommentReaction', backref='comment', lazy='dynamic', cascade='all, delete-orphan')
+
+    def likes_count(self):
+        return self.comment_reactions.filter_by(reaction_type='like').count()
+
+    def dislikes_count(self):
+        return self.comment_reactions.filter_by(reaction_type='dislike').count()
+
+    def replies_count(self):
+        return self.replies.count()
+
+    def __repr__(self):
+        return f'<Comment by {self.author.username}>'
+
+
+# ============ 🆕 ОТВЕТ НА КОММЕНТАРИЙ ============
+
+class CommentReply(db.Model):
+    """Ответ на комментарий"""
+
+    __tablename__ = 'comment_reply'
+
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.Text, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    comment_id = db.Column(db.Integer, db.ForeignKey('comment.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<CommentReply by {self.author.username}>'
+
+
+# ============ 🆕 РЕАКЦИЯ НА КОММЕНТАРИЙ ============
+
+class CommentReaction(db.Model):
+    """Реакция на комментарий (лайк/дизлайк)"""
+
+    __tablename__ = 'comment_reaction'
+
+    id = db.Column(db.Integer, primary_key=True)
+    reaction_type = db.Column(db.String(10), nullable=False)  # like / dislike
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    comment_id = db.Column(db.Integer, db.ForeignKey('comment.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # 1 реакция от 1 юзера на 1 комментарий
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'comment_id', name='unique_user_comment_reaction'),
+    )
+
+    def __repr__(self):
+        return f'<CommentReaction {self.reaction_type}>'
+
+
+# ============ РЕАКЦИЯ НА ВИДЕО (КАРМА) ============
+
+class Reaction(db.Model):
+    __tablename__ = 'reaction'
+
+    id = db.Column(db.Integer, primary_key=True)
+    reaction_type = db.Column(db.String(10), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'video_id', name='unique_user_video_reaction'),
+    )
+
+    def karma_value(self):
+        values = {'fire': 3, 'good': 1, 'bad': -1}
+        return values.get(self.reaction_type, 0)
+
+    def __repr__(self):
+        return f'<Reaction {self.reaction_type}>'
+
+
+# ============ ИСТОРИЯ ПРОСМОТРОВ ============
+
+class WatchHistory(db.Model):
+    __tablename__ = 'watch_history'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    video_id = db.Column(db.Integer, db.ForeignKey('video.id'), nullable=False)
+    watched_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<WatchHistory user={self.user_id} video={self.video_id}>'
+
+
+# ============ ТОКЕН ВОССТАНОВЛЕНИЯ ПАРОЛЯ ============
+
+class PasswordResetToken(db.Model):
+    __tablename__ = 'password_reset_token'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    token = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    user = db.relationship('User', backref='reset_tokens')
+
+    @staticmethod
+    def generate_token():
+        return secrets.token_urlsafe(32)
+
+    @staticmethod
+    def create_for_user(user):
+        PasswordResetToken.query.filter_by(user_id=user.id).delete()
+        token = PasswordResetToken(
+            user_id=user.id,
+            token=PasswordResetToken.generate_token(),
+            expires_at=datetime.utcnow() + timedelta(hours=1)
+        )
+        db.session.add(token)
+        db.session.commit()
+        return token
+
+    def is_expired(self):
+        return datetime.utcnow() > self.expires_at
+
+    @staticmethod
+    def verify_token(token_string):
+        token = PasswordResetToken.query.filter_by(token=token_string).first()
+        if not token:
+            return None
+        if token.is_expired():
+            db.session.delete(token)
+            db.session.commit()
+            return None
+        return token.user
+
+    def __repr__(self):
+        return f'<PasswordResetToken user={self.user.username}>'
+
+
+# ============ ИНИЦИАЛИЗАЦИЯ БД ============
+
+def init_db(app):
+    with app.app_context():
+        db.create_all()
+
+        admin = User.query.filter_by(role='admin').first()
+
+        if not admin:
+            admin = User(
+                username='admin',
+                email='admin@vidsphere.com',
+                role='admin',
+                bio='Администратор VidSphere'
+            )
+            admin.set_password('Admin123')
+            db.session.add(admin)
+            db.session.commit()
+
+            print('=' * 50)
+            print('🔐 СОЗДАН АДМИНИСТРАТОР:')
+            print('   Логин: admin')
+            print('   Пароль: Admin123')
+            print('   ⚠️  СМЕНИТЕ ПАРОЛЬ ПОСЛЕ ПЕРВОГО ВХОДА!')
+            print('=' * 50)
+        else:
+            print(f'✅ Админ существует: {admin.username}')
+
+==========================================================================================
+
+
+==========================================================================================
+📁 ФАЙЛ: app/routes/video.py
+🔖 СЕКЦИЯ: ROUTES_VIDEO
+==========================================================================================
+
+
+# app/routes/video.py
+
+from flask import Blueprint, render_template, redirect, url_for, flash, g, request, abort, jsonify
+from app.extensions import db
+from app.models import Video, Comment, Reaction, WatchHistory
+from app.forms import VideoUploadForm, CommentForm
+from app.utils.decorators import login_required
+from app.utils.helpers import save_video, generate_thumbnail, delete_file, save_thumbnail
+from datetime import datetime
+
+video_bp = Blueprint('video', __name__)
+
+
+# ============ ЗАГРУЗКА ВИДЕО ============
+
+@video_bp.route('/upload', methods=['GET', 'POST'])
+@login_required
+def upload():
+    """Страница загрузки видео"""
+    import json
+
+    form = VideoUploadForm()
+
+    if form.validate_on_submit():
+        # Сохраняем видео файл (теперь возвращает кортеж)
+        video_filename, qualities = save_video(form.video.data)
+
+        if not video_filename:
+            flash('Ошибка загрузки видео', 'danger')
+            return render_template('video/upload.html', form=form)
+
+        # Превью: своё или автогенерация
+        if form.thumbnail.data:
+            thumbnail_filename = save_thumbnail(form.thumbnail.data)
+        else:
+            thumbnail_filename = generate_thumbnail(video_filename)
+
+        # Создаём запись в БД
+        video = Video(
+            title=form.title.data,
+            description=form.description.data or '',
+            filename=video_filename,
+            thumbnail=thumbnail_filename,
+            mood=form.mood.data,
+            visibility=form.visibility.data,
+            tags=form.tags.data or '',
+            user_id=g.user.id,
+            qualities=json.dumps(qualities)
+        )
+
+        db.session.add(video)
+        db.session.commit()
+
+        flash('Видео успешно загружено!', 'success')
+        return redirect(url_for('video.watch', video_id=video.id))
+
+    return render_template('video/upload.html', form=form)
+
+
+
+# ============ ПРОВЕРКА ССЫЛКИ (AJAX) ============
+
+@video_bp.route('/upload/check-url', methods=['POST'])
+@login_required
+def check_url():
+    """Получить информацию о видео по URL (AJAX)"""
+    from app.utils.url_downloader import get_video_info_from_url
+
+    if not request.is_json and request.headers.get('X-Requested-With') != 'XMLHttpRequest':
+        abort(400)
+
+    data = request.get_json()
+    url = (data or {}).get('url', '').strip()
+
+    if not url:
+        return jsonify({'error': 'Укажите ссылку'}), 400
+
+    if not url.startswith(('http://', 'https://')):
+        return jsonify({'error': 'Некорректная ссылка'}), 400
+
+    info = get_video_info_from_url(url)
+
+    if not info:
+        return jsonify({'error': 'Не удалось получить информацию о видео. Проверьте ссылку.'}), 400
+
+    return jsonify({
+        'success': True,
+        'title': info['title'],
+        'description': info['description'],
+        'duration': info['duration'],
+        'uploader': info['uploader'],
+        'extractor': info['extractor'],
+    })
+
+
+# ============ ИМПОРТ ВИДЕО ПО ССЫЛКЕ ============
+
+@video_bp.route('/upload/from-url', methods=['POST'])
+@login_required
+def upload_from_url():
+    """Загрузка видео по URL"""
+    import json as json_module
+    from app.utils.url_downloader import download_video_from_url
+
+    url = request.form.get('url', '').strip()
+    title = request.form.get('title', '').strip()
+    description = request.form.get('description', '').strip()
+    mood = request.form.get('mood', 'inspiration')
+    tags = request.form.get('tags', '').strip()
+    visibility = request.form.get('visibility', 'public')
+
+    if not url:
+        flash('Укажите ссылку на видео', 'danger')
+        return redirect(url_for('video.upload'))
+
+    if not title:
+        flash('Укажите название видео', 'danger')
+        return redirect(url_for('video.upload'))
+
+    if mood not in ['laugh', 'knowledge', 'peace', 'adrenaline', 'inspiration']:
+        mood = 'inspiration'
+
+    if visibility not in ['public', 'unlisted']:
+        visibility = 'public'
+
+    main_filename, qualities, thumbnail = download_video_from_url(url)
+
+    if not main_filename:
+        flash('Не удалось скачать видео. Проверьте ссылку или попробуйте позже.', 'danger')
+        return redirect(url_for('video.upload'))
+
+    video = Video(
+        title=title[:200],
+        description=description[:2000],
+        filename=main_filename,
+        thumbnail=thumbnail,
+        mood=mood,
+        visibility=visibility,
+        tags=tags[:500],
+        user_id=g.user.id,
+        qualities=json_module.dumps(qualities)
+    )
+
+    db.session.add(video)
+    db.session.commit()
+
+    flash('Видео успешно импортировано!', 'success')
+    return redirect(url_for('video.watch', video_id=video.id))
+
+# ============ ПРОСМОТР ВИДЕО ============
+
+@video_bp.route('/video/<int:video_id>', methods=['GET', 'POST'])
+def watch(video_id):
+    """Страница просмотра видео"""
+
+    video = Video.query.get_or_404(video_id)
+    form = CommentForm()
+
+    # Увеличиваем просмотры
+    video.views += 1
+
+    # Записываем в историю
+    if g.user:
+        existing = WatchHistory.query.filter_by(
+            user_id=g.user.id,
+            video_id=video.id
+        ).first()
+
+        if existing:
+            # Обновляем время просмотра
+            existing.watched_at = datetime.utcnow()
+        else:
+            history = WatchHistory(user_id=g.user.id, video_id=video.id)
+            db.session.add(history)
+
+    db.session.commit()
+
+    comments = Comment.query.filter_by(video_id=video.id) \
+        .order_by(Comment.created_at.desc()).all()
+
+    # Реакция пользователя
+    user_reaction = None
+    if g.user:
+        reaction = Reaction.query.filter_by(user_id=g.user.id, video_id=video.id).first()
+        if reaction:
+            user_reaction = reaction.reaction_type
+
+    # Подсчёт реакций
+    reactions_count = {
+        'fire': Reaction.query.filter_by(video_id=video.id, reaction_type='fire').count(),
+        'good': Reaction.query.filter_by(video_id=video.id, reaction_type='good').count(),
+        'bad': Reaction.query.filter_by(video_id=video.id, reaction_type='bad').count()
+    }
+
+    # Похожие видео
+    related = Video.query.filter(
+        Video.id != video.id,
+        Video.mood == video.mood
+    ).order_by(Video.views.desc()).limit(8).all()
+
+    if len(related) < 4:
+        more = Video.query.filter(Video.id != video.id).order_by(Video.karma.desc()).limit(8).all()
+        seen_ids = {v.id for v in related}
+        for v in more:
+            if v.id not in seen_ids:
+                related.append(v)
+            if len(related) >= 8:
+                break
+
+    return render_template('video/watch.html',
+                           video=video,
+                           form=form,
+                           comments=comments,
+                           user_reaction=user_reaction,
+                           reactions_count=reactions_count,
+                           related_videos=related)
+
+
+# ============ РЕАКЦИЯ НА ВИДЕО (AJAX) ============
+
+@video_bp.route('/video/<int:video_id>/react/<reaction_type>', methods=['POST'])
+@login_required
+def react(video_id, reaction_type):
+    """Добавить/изменить реакцию (AJAX)"""
+
+    if reaction_type not in ['fire', 'good', 'bad']:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'error': 'Invalid reaction'}), 400
+        abort(400)
+
+    video = Video.query.get_or_404(video_id)
+
+    # Ищем существующую реакцию
+    existing = Reaction.query.filter_by(
+        user_id=g.user.id,
+        video_id=video.id
+    ).first()
+
+    new_reaction = None
+
+    if existing:
+        if existing.reaction_type == reaction_type:
+            # Убираем реакцию
+            db.session.delete(existing)
+            new_reaction = None
+        else:
+            # Меняем тип
+            existing.reaction_type = reaction_type
+            new_reaction = reaction_type
+    else:
+        # Новая реакция
+        reaction = Reaction(
+            reaction_type=reaction_type,
+            user_id=g.user.id,
+            video_id=video.id
+        )
+        db.session.add(reaction)
+        new_reaction = reaction_type
+
+    db.session.commit()
+    video.recalculate_karma()
+    db.session.commit()
+
+    # Подсчёт реакций
+    reactions_count = {
+        'fire': Reaction.query.filter_by(video_id=video.id, reaction_type='fire').count(),
+        'good': Reaction.query.filter_by(video_id=video.id, reaction_type='good').count(),
+        'bad': Reaction.query.filter_by(video_id=video.id, reaction_type='bad').count()
+    }
+
+    # AJAX запрос — возвращаем JSON
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'success': True,
+            'user_reaction': new_reaction,
+            'reactions': reactions_count,
+            'karma': video.karma
+        })
+
+    # Обычный запрос — редирект
+    return redirect(url_for('video.watch', video_id=video.id))
+
+
+# ============ ДОБАВИТЬ КОММЕНТАРИЙ (AJAX) ============
+
+@video_bp.route('/video/<int:video_id>/comment', methods=['POST'])
+@login_required
+def add_comment(video_id):
+    """Добавить комментарий (AJAX)"""
+
+    video = Video.query.get_or_404(video_id)
+
+    # AJAX запрос
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        text = request.json.get('text', '').strip()
+
+        if not text:
+            return jsonify({'error': 'Комментарий не может быть пустым'}), 400
+
+        if len(text) > 1000:
+            return jsonify({'error': 'Комментарий слишком длинный'}), 400
+
+        comment = Comment(
+            text=text,
+            user_id=g.user.id,
+            video_id=video.id
+        )
+        db.session.add(comment)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'comment': {
+                'id': comment.id,
+                'text': comment.text,
+                'author': {
+                    'username': g.user.username,
+                    'avatar': g.user.avatar
+                },
+                'created_at': comment.created_at.strftime('%d.%m.%Y %H:%M')
+            }
+        })
+
+    # Обычная форма (fallback)
+    form = CommentForm()
+    if form.validate_on_submit():
+        comment = Comment(
+            text=form.text.data,
+            user_id=g.user.id,
+            video_id=video.id
+        )
+        db.session.add(comment)
+        db.session.commit()
+        flash('Комментарий добавлен!', 'success')
+
+    return redirect(url_for('video.watch', video_id=video.id))
+
+
+# ============ УДАЛЕНИЕ ВИДЕО ============
+
+@video_bp.route('/video/<int:video_id>/delete', methods=['POST'])
+@login_required
+def delete(video_id):
+    """Удаление видео"""
+
+    video = Video.query.get_or_404(video_id)
+
+    if video.user_id != g.user.id and not g.user.is_admin():
+        flash('У вас нет прав на удаление этого видео', 'danger')
+        abort(403)
+
+    from app.utils.helpers import delete_file
+    delete_file(video.filename, 'videos')
+    delete_file(video.thumbnail, 'thumbnails')
+
+    db.session.delete(video)
+    db.session.commit()
+
+    flash('Видео удалено', 'info')
+    return redirect(url_for('main.index'))
+
+# ============ УДАЛЕНИЕ КОММЕНТАРИЯ (AJAX) ============
+
+@video_bp.route('/video/<int:video_id>/comment/<int:comment_id>/delete', methods=['POST'])
+@login_required
+def delete_comment(video_id, comment_id):
+    """Удаление комментария (AJAX)"""
+
+    comment = Comment.query.get_or_404(comment_id)
+    video = Video.query.get_or_404(video_id)
+
+    # Проверяем права:
+    # - автор комментария
+    # - автор видео
+    # - модератор или админ
+    can_delete = (
+        comment.user_id == g.user.id or
+        video.user_id == g.user.id or
+        g.user.is_moderator()
+    )
+
+    if not can_delete:
+        return jsonify({'error': 'Нет прав'}), 403
+
+    db.session.delete(comment)
+    db.session.commit()
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': True, 'comment_id': comment_id})
+
+    flash('Комментарий удалён', 'info')
+    return redirect(url_for('video.watch', video_id=video_id))
+
+# ============ РЕАКЦИЯ НА КОММЕНТАРИЙ (AJAX) ============
+
+@video_bp.route('/video/<int:video_id>/comment/<int:comment_id>/react/<reaction_type>', methods=['POST'])
+@login_required
+def react_comment(video_id, comment_id, reaction_type):
+    """Реакция на комментарий (AJAX)"""
+    from app.models import CommentReaction
+
+    if reaction_type not in ['like', 'dislike']:
+        return jsonify({'error': 'Invalid reaction'}), 400
+
+    comment = Comment.query.get_or_404(comment_id)
+
+    existing = CommentReaction.query.filter_by(
+        user_id=g.user.id,
+        comment_id=comment_id
+    ).first()
+
+    new_reaction = None
+
+    if existing:
+        if existing.reaction_type == reaction_type:
+            db.session.delete(existing)
+            new_reaction = None
+        else:
+            existing.reaction_type = reaction_type
+            new_reaction = reaction_type
+    else:
+        reaction = CommentReaction(
+            reaction_type=reaction_type,
+            user_id=g.user.id,
+            comment_id=comment_id
+        )
+        db.session.add(reaction)
+        new_reaction = reaction_type
+
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'user_reaction': new_reaction,
+        'likes': comment.likes_count(),
+        'dislikes': comment.dislikes_count()
+    })
+
+
+# ============ ОТВЕТ НА КОММЕНТАРИЙ (AJAX) ============
+
+@video_bp.route('/video/<int:video_id>/comment/<int:comment_id>/reply', methods=['POST'])
+@login_required
+def add_reply(video_id, comment_id):
+    """Добавить ответ на комментарий (AJAX)"""
+    from app.models import CommentReply
+
+    comment = Comment.query.get_or_404(comment_id)
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        text = request.json.get('text', '').strip()
+
+        if not text:
+            return jsonify({'error': 'Ответ не может быть пустым'}), 400
+
+        if len(text) > 500:
+            return jsonify({'error': 'Ответ слишком длинный'}), 400
+
+        reply = CommentReply(
+            text=text,
+            user_id=g.user.id,
+            comment_id=comment_id
+        )
+        db.session.add(reply)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'reply': {
+                'id': reply.id,
+                'text': reply.text,
+                'author': {
+                    'username': g.user.username,
+                    'avatar': g.user.avatar
+                },
+                'created_at': reply.created_at.strftime('%d.%m.%Y %H:%M')
+            }
+        })
+
+    return jsonify({'error': 'Bad request'}), 400
+
+
+# ============ УДАЛЕНИЕ ОТВЕТА (AJAX) ============
+
+@video_bp.route('/video/<int:video_id>/comment/<int:comment_id>/reply/<int:reply_id>/delete', methods=['POST'])
+@login_required
+def delete_reply(video_id, comment_id, reply_id):
+    """Удаление ответа на комментарий (AJAX)"""
+    from app.models import CommentReply
+
+    reply = CommentReply.query.get_or_404(reply_id)
+    video = Video.query.get_or_404(video_id)
+
+    can_delete = (
+        reply.user_id == g.user.id or
+        video.user_id == g.user.id or
+        g.user.is_moderator()
+    )
+
+    if not can_delete:
+        return jsonify({'error': 'Нет прав'}), 403
+
+    db.session.delete(reply)
+    db.session.commit()
+
+    return jsonify({'success': True, 'reply_id': reply_id})
+
+==========================================================================================
+
+
+==========================================================================================
+📁 ФАЙЛ: app/forms.py
+🔖 СЕКЦИЯ: FORMS
+==========================================================================================
+
+
+import re
+from flask_wtf import FlaskForm
+from flask_wtf.file import FileField, FileAllowed, FileRequired
+from wtforms import StringField, PasswordField, TextAreaField, SelectField
+from wtforms.validators import DataRequired, Email, Length, EqualTo, ValidationError, Regexp
+from app.models import User
+
+# ============ ВАЛИДАТОР ПАРОЛЯ ============
+
+def strong_password(form, field):
+    """
+    Проверяет надёжность пароля:
+    - Минимум 6 символов
+    - Хотя бы одна цифра
+    - Хотя бы одна строчная буква
+    - Хотя бы одна заглавная буква
+    """
+    password = field.data
+
+    if len(password) < 6:
+        raise ValidationError('Минимум 6 символов')
+
+    if not re.search(r'\d', password):
+        raise ValidationError('Нужна хотя бы одна цифра')
+
+    if not re.search(r'[a-z]', password):
+        raise ValidationError('Нужна хотя бы одна строчная буква')
+
+    if not re.search(r'[A-Z]', password):
+        raise ValidationError('Нужна хотя бы одна заглавная буква')
+
+
+# ============ ФОРМА РЕГИСТРАЦИИ ============
+
+class RegisterForm(FlaskForm):
+    """Форма регистрации нового пользователя"""
+
+    username = StringField('Имя пользователя', validators=[
+        DataRequired(message='Введите имя пользователя'),
+        Length(min=3, max=80, message='От 3 до 80 символов')
+    ])
+
+    email = StringField('Email', validators=[
+        DataRequired(message='Введите email'),
+        Email(message='Некорректный email')
+    ])
+
+    password = PasswordField('Пароль', validators=[
+        DataRequired(message='Введите пароль'),
+        strong_password
+    ])
+
+    password_confirm = PasswordField('Подтвердите пароль', validators=[
+        DataRequired(message='Подтвердите пароль'),
+        EqualTo('password', message='Пароли не совпадают')
+    ])
+
+    def validate_username(self, field):
+        """Проверяет уникальность имени"""
+        user = User.query.filter_by(username=field.data).first()
+        if user:
+            raise ValidationError('Это имя уже занято')
+
+    def validate_email(self, field):
+        """Проверяет уникальность email"""
+        user = User.query.filter_by(email=field.data.lower()).first()
+        if user:
+            raise ValidationError('Этот email уже зарегистрирован')
+
+
+# ============ ФОРМА ВХОДА ============
+
+class LoginForm(FlaskForm):
+    """Форма входа"""
+
+    username = StringField('Имя пользователя', validators=[
+        DataRequired(message='Введите имя пользователя')
+    ])
+
+    password = PasswordField('Пароль', validators=[
+        DataRequired(message='Введите пароль')
+    ])
+
+
+# ============ ФОРМА ЗАГРУЗКИ ВИДЕО ============
+
+class VideoUploadForm(FlaskForm):
+    """Форма загрузки видео"""
+
+    title = StringField('Название', validators=[
+        DataRequired(message='Введите название'),
+        Length(min=3, max=200, message='От 3 до 200 символов')
+    ])
+
+    description = TextAreaField('Описание', validators=[
+        Length(max=2000, message='Максимум 2000 символов')
+    ])
+
+    video = FileField('Видео файл', validators=[
+        FileRequired(message='Выберите видео'),
+        FileAllowed(['mp4', 'avi', 'mov', 'mkv', 'webm'], 'Только видео файлы!')
+    ])
+
+    thumbnail = FileField('Обложка', validators=[
+        FileAllowed(['jpg', 'jpeg', 'png', 'webp'], 'Только изображения!')
+    ])
+
+    mood = SelectField('Настроение', choices=[
+        ('inspiration', '✨ Вдохновение'),
+        ('laugh', '😂 Смех'),
+        ('knowledge', '🧠 Знания'),
+        ('peace', '🌸 Покой'),
+        ('adrenaline', '⚡ Адреналин')
+    ], validators=[
+        DataRequired(message='Выберите настроение')
+    ])
+
+    visibility = SelectField('Доступ', choices=[
+        ('public', '🌍 Публичное — видно всем'),
+        ('unlisted', '🔗 По ссылке — только у кого есть ссылка')
+    ], validators=[
+        DataRequired()
+    ])
+
+    tags = StringField('Теги', validators=[
+        Length(max=500, message='Максимум 500 символов')
+    ])
+
+# ============ ФОРМА КОММЕНТАРИЯ ============
+
+class CommentForm(FlaskForm):
+    """Форма добавления комментария"""
+
+    text = TextAreaField('Комментарий', validators=[
+        DataRequired(message='Введите комментарий'),
+        Length(min=1, max=1000, message='От 1 до 1000 символов')
+    ])
+
+
+# ============ ФОРМА РЕДАКТИРОВАНИЯ ПРОФИЛЯ ============
+
+class ProfileEditForm(FlaskForm):
+    """Форма редактирования профиля"""
+
+    username = StringField('Имя пользователя', validators=[
+        DataRequired(message='Введите имя'),
+        Length(min=3, max=80, message='От 3 до 80 символов')
+    ])
+
+    email = StringField('Email', validators=[
+        DataRequired(message='Введите email'),
+        Email(message='Некорректный email')
+    ])
+
+    bio = TextAreaField('О себе', validators=[
+        Length(max=500, message='Максимум 500 символов')
+    ])
+
+    avatar = FileField('Аватар', validators=[
+        FileAllowed(['jpg', 'jpeg', 'png', 'gif', 'webp'], 'Только изображения!')
+    ])
+
+    def __init__(self, original_username, original_email, *args, **kwargs):
+        """
+        Сохраняем оригинальные значения для проверки уникальности
+        (чтобы пользователь мог оставить свои текущие данные)
+        """
+        super().__init__(*args, **kwargs)
+        self.original_username = original_username
+        self.original_email = original_email
+
+    def validate_username(self, field):
+        """Проверяет уникальность (если изменилось)"""
+        if field.data != self.original_username:
+            user = User.query.filter_by(username=field.data).first()
+            if user:
+                raise ValidationError('Это имя уже занято')
+
+    def validate_email(self, field):
+        """Проверяет уникальность (если изменилось)"""
+        if field.data.lower() != self.original_email.lower():
+            user = User.query.filter_by(email=field.data.lower()).first()
+            if user:
+                raise ValidationError('Этот email уже занят')
+
+
+# ============ ФОРМА ПОИСКА ============
+
+class SearchForm(FlaskForm):
+    """Форма поиска"""
+
+    q = StringField('Поиск', validators=[
+        Length(max=100, message='Максимум 100 символов')
+    ])
+
+    mood = SelectField('Настроение', choices=[
+        ('', 'Все настроения'),
+        ('laugh', '😂 Смех'),
+        ('knowledge', '🧠 Знания'),
+        ('peace', '🌸 Покой'),
+        ('adrenaline', '⚡ Адреналин'),
+        ('inspiration', '✨ Вдохновение')
+    ])
+
+    sort = SelectField('Сортировка', choices=[
+        ('date', 'По дате'),
+        ('views', 'По просмотрам'),
+        ('karma', 'По карме')
+    ])
+
+
+# ============ ФОРМА ВОССТАНОВЛЕНИЯ ПАРОЛЯ ============
+
+class ForgotPasswordForm(FlaskForm):
+    """Форма запроса восстановления пароля"""
+
+    email = StringField('Email', validators=[
+        DataRequired(message='Введите email'),
+        Email(message='Некорректный email')
+    ])
+
+
+class ResetPasswordForm(FlaskForm):
+    """Форма установки нового пароля"""
+
+    password = PasswordField('Новый пароль', validators=[
+        DataRequired(message='Введите пароль'),
+        Length(min=6, message='Минимум 6 символов'),
+        Regexp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$',
+               message='Пароль должен содержать заглавные, строчные буквы и цифры')
+    ])
+
+    password_confirm = PasswordField('Подтвердите пароль', validators=[
+        DataRequired(message='Подтвердите пароль'),
+        EqualTo('password', message='Пароли не совпадают')
+    ])
+
+==========================================================================================
+
+
+==========================================================================================
+📁 ФАЙЛ: app/templates/video/upload.html
+🔖 СЕКЦИЯ: TEMPLATE_UPLOAD
+==========================================================================================
+
+
+<!-- app/templates/video/upload.html -->
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/upload.css') }}">
+{% endblock %}
+
+{% block title %}Загрузить видео — Lampix{% endblock %}
+
+{% block content %}
+<div class="upload-page">
+    <div class="upload-card">
+        <h1>📤 Загрузить видео</h1>
+
+        <!-- Вкладки -->
+        <div class="upload-tabs">
+            <button class="upload-tab active" data-tab="file">
+                📁 Файл с компьютера
+            </button>
+            <button class="upload-tab" data-tab="url">
+                🔗 Импорт по ссылке
+            </button>
+        </div>
+
+        <!-- ============================
+             ВКЛАДКА: ФАЙЛ
+        ============================= -->
+        <div class="upload-tab-panel active" id="tab-file">
+            <form method="POST"
+                  enctype="multipart/form-data"
+                  class="upload-form"
+                  id="uploadForm"
+                  action="{{ url_for('video.upload') }}">
+                {{ form.hidden_tag() }}
+
+                <div class="form-group">
+                    <label>Название *</label>
+                    {{ form.title(class="form-input", placeholder="Название вашего видео") }}
+                    {% if form.title.errors %}
+                        <span class="form-error">{{ form.title.errors[0] }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label>Описание</label>
+                    {{ form.description(class="form-input form-textarea", rows=4, placeholder="О чём это видео?") }}
+                </div>
+
+                <div class="form-group">
+                    <label>Видео файл *</label>
+                    <div class="file-upload">
+                        {{ form.video(class="file-input", id="videoInput", accept="video/*") }}
+                        <label for="videoInput" class="file-label">
+                            <span class="file-icon">🎬</span>
+                            <span class="file-text">Выберите видео или перетащите сюда</span>
+                            <span class="file-hint">MP4, AVI, MOV, MKV, WebM (до 100 MB)</span>
+                        </label>
+                    </div>
+                    {% if form.video.errors %}
+                        <span class="form-error">{{ form.video.errors[0] }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label>Обложка</label>
+                    <div class="thumbnail-choice">
+                        <label class="radio-card active" data-target="auto">
+                            <input type="radio" name="thumb_mode" value="auto" checked>
+                            <div class="radio-card-body">
+                                <span class="radio-icon">🤖</span>
+                                <span class="radio-title">Автоматически</span>
+                                <span class="radio-desc">Первый кадр видео</span>
+                            </div>
+                        </label>
+                        <label class="radio-card" data-target="custom">
+                            <input type="radio" name="thumb_mode" value="custom">
+                            <div class="radio-card-body">
+                                <span class="radio-icon">🖼️</span>
+                                <span class="radio-title">Своя обложка</span>
+                                <span class="radio-desc">JPG, PNG, WebP</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="custom-thumb-upload" id="customThumbUpload" style="display: none;">
+                        <div class="file-upload">
+                            {{ form.thumbnail(class="file-input", id="thumbInput", accept="image/*") }}
+                            <label for="thumbInput" class="file-label file-label-sm">
+                                <span class="file-icon">🖼️</span>
+                                <span class="file-text" id="thumbFileName">Выберите изображение</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Настроение *</label>
+                        {{ form.mood(class="form-input form-select") }}
+                    </div>
+                    <div class="form-group">
+                        <label>Доступ *</label>
+                        {{ form.visibility(class="form-input form-select") }}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Теги</label>
+                    {{ form.tags(class="form-input", placeholder="игры, музыка, влог") }}
+                    <small class="form-hint">Через запятую</small>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block" id="uploadBtn">
+                    🚀 Загрузить
+                </button>
+
+                <div id="upload-progress" style="display: none; margin-top: 20px;">
+                    <div class="upload-progress-bar">
+                        <div class="upload-progress-fill"></div>
+                    </div>
+                    <p class="upload-progress-text">⚙️ Загрузка и конвертация... Пожалуйста, подождите</p>
+                </div>
+            </form>
+        </div>
+
+        <!-- ============================
+             ВКЛАДКА: ССЫЛКА
+        ============================= -->
+        <div class="upload-tab-panel" id="tab-url">
+
+            <!-- Шаг 1: вставить ссылку -->
+            <div id="url-step-1">
+                <div class="url-import-info">
+                    <p>
+                        Вставь ссылку на видео с любого поддерживаемого сервиса.
+                        Мы автоматически заполним название и описание.
+                    </p>
+                    <div class="url-supported">
+                        <span>YouTube</span>
+                        <span>VK</span>
+                        <span>RuTube</span>
+                        <span>Vimeo</span>
+                        <span>TikTok</span>
+                        <span>и ещё 1000+ сервисов</span>
+                    </div>
+                </div>
+
+                <div class="url-input-wrap">
+                    <input
+                        type="url"
+                        id="videoUrlInput"
+                        class="form-input url-input"
+                        placeholder="https://youtube.com/watch?v=..."
+                        autocomplete="off"
+                    >
+                    <button type="button" class="btn btn-primary" id="checkUrlBtn">
+                        🔍 Проверить
+                    </button>
+                </div>
+
+                <div id="url-check-error" class="url-check-error" style="display: none;"></div>
+                <div id="url-check-loading" class="url-check-loading" style="display: none;">
+                    ⏳ Получаю информацию о видео...
+                </div>
+            </div>
+
+            <!-- Шаг 2: форма с автозаполнением -->
+            <div id="url-step-2" style="display: none;">
+
+                <div class="url-video-preview">
+                    <div class="url-video-meta">
+                        <span id="urlVideoSource" class="url-video-source"></span>
+                        <span id="urlVideoUploader" class="url-video-uploader"></span>
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm" id="urlChangeBtn">
+                        ← Изменить ссылку
+                    </button>
+                </div>
+
+                <form method="POST"
+                      class="upload-form"
+                      id="urlUploadForm"
+                      action="{{ url_for('video.upload_from_url') }}">
+                    <input type="hidden" name="url" id="urlHidden">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="form-group">
+                        <label>Название *</label>
+                        <input type="text"
+                               name="title"
+                               id="urlTitle"
+                               class="form-input"
+                               placeholder="Название видео"
+                               required
+                               maxlength="200">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Описание</label>
+                        <textarea name="description"
+                                  id="urlDescription"
+                                  class="form-input form-textarea"
+                                  rows="4"
+                                  placeholder="Описание видео"
+                                  maxlength="2000"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Настроение *</label>
+                            <select name="mood" class="form-input form-select" required>
+                                <option value="inspiration">✨ Вдохновение</option>
+                                <option value="laugh">😂 Смех</option>
+                                <option value="knowledge">🧠 Знания</option>
+                                <option value="peace">🌸 Покой</option>
+                                <option value="adrenaline">⚡ Адреналин</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Доступ *</label>
+                            <select name="visibility" class="form-input form-select" required>
+                                <option value="public">🌍 Публичное</option>
+                                <option value="unlisted">🔗 По ссылке</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Теги</label>
+                        <input type="text"
+                               name="tags"
+                               class="form-input"
+                               placeholder="игры, музыка, влог"
+                               maxlength="500">
+                        <small class="form-hint">Через запятую</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block" id="urlUploadBtn">
+                        🔗 Импортировать видео
+                    </button>
+
+                    <div id="url-upload-progress" style="display: none; margin-top: 20px;">
+                        <div class="upload-progress-bar">
+                            <div class="upload-progress-fill"></div>
+                        </div>
+                        <p class="upload-progress-text">
+                            📥 Скачиваем и конвертируем видео... Это может занять несколько минут.
+                        </p>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+==========================================================================================
+
+
+==========================================================================================
+📁 ФАЙЛ: app/utils/url_downloader.py
+🔖 СЕКЦИЯ: UTILS_URL_DOWNLOADER
+==========================================================================================
+
+
+# app/utils/url_downloader.py
+
+import os
+import secrets
+import subprocess
+import json
+from flask import current_app
+from app.utils.video_converter import convert_video_all_qualities, get_video_info, FFPROBE
+from app.utils.helpers import generate_thumbnail
+
+
+def get_yt_dlp_path():
+    """Возвращает путь к yt-dlp"""
+    import shutil
+    path = shutil.which('yt-dlp')
+    if path:
+        return path
+
+    venv_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        '.venv', 'Scripts', 'yt-dlp.exe'
+    )
+    if os.path.exists(venv_path):
+        return venv_path
+
+    return 'yt-dlp'
+
+
+def get_video_info_from_url(url):
+    """
+    Получает информацию о видео по URL без скачивания.
+    Возвращает словарь с title, description, duration, thumbnail_url
+    или None при ошибке.
+    """
+    yt_dlp = get_yt_dlp_path()
+
+    cmd = [
+        yt_dlp,
+        '--dump-json',
+        '--no-download',
+        '--no-playlist',
+        url
+    ]
+
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            return None
+
+        data = json.loads(result.stdout)
+
+        return {
+            'title': data.get('title', '')[:200],
+            'description': data.get('description', '')[:2000],
+            'duration': data.get('duration', 0),
+            'uploader': data.get('uploader', ''),
+            'thumbnail_url': data.get('thumbnail', ''),
+            'extractor': data.get('extractor_key', ''),
+        }
+
+    except subprocess.TimeoutExpired:
+        return None
+    except Exception as e:
+        print(f"url_downloader get_info error: {e}")
+        return None
+
+
+def download_video_from_url(url):
+    """
+    Скачивает видео по URL через yt-dlp.
+    Конвертирует в несколько качеств.
+
+    Returns:
+        tuple: (main_filename, qualities_dict, thumbnail_filename)
+        или (None, {}, None) при ошибке
+    """
+    yt_dlp = get_yt_dlp_path()
+
+    videos_folder = os.path.join(
+        current_app.config['UPLOAD_FOLDER'], 'videos'
+    )
+    os.makedirs(videos_folder, exist_ok=True)
+
+    base_name = secrets.token_hex(16)
+    temp_filename = f'url_temp_{base_name}.mp4'
+    temp_path = os.path.join(videos_folder, temp_filename)
+
+    try:
+        cmd = [
+            yt_dlp,
+            '-f', 'b[ext=mp4]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4',
+            '--no-playlist',
+            '--no-part',
+            '--merge-output-format', 'mp4',
+            '-o', temp_path,
+            url
+        ]
+
+        print(f"📥 Скачиваю видео: {url}")
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+
+        if result.returncode != 0:
+            print(f"yt-dlp error: {result.stderr[-500:]}")
+            return None, {}, None
+
+        if not os.path.exists(temp_path):
+            print(f"Файл не создан: {temp_path}")
+            return None, {}, None
+
+        print(f"✅ Скачано: {os.path.getsize(temp_path) / 1024 / 1024:.1f} MB")
+
+        # Конвертируем во все качества
+        qualities = convert_video_all_qualities(
+            input_path=temp_path,
+            base_filename=base_name,
+            videos_folder=videos_folder
+        )
+
+        # Удаляем временный файл
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+        if not qualities:
+            print("❌ Не удалось сконвертировать видео")
+            return None, {}, None
+
+        # Выбираем основной файл
+        main_filename = None
+        for q in ['1080p', '720p', '480p', '360p', '240p']:
+            if q in qualities:
+                main_filename = qualities[q]
+                break
+
+        if not main_filename:
+            main_filename = list(qualities.values())[0]
+
+        # Генерируем превью
+        thumbnail = generate_thumbnail(main_filename)
+
+        return main_filename, qualities, thumbnail
+
+    except subprocess.TimeoutExpired:
+        print("❌ Таймаут скачивания (5 минут)")
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        return None, {}, None
+
+    except Exception as e:
+        print(f"❌ Ошибка скачивания: {e}")
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
+        return None, {}, None
+
+==========================================================================================
+
+
+==========================================================================================
+📁 ФАЙЛ: app/utils/video_converter.py
+🔖 СЕКЦИЯ: UTILS_VIDEO_CONVERTER
+==========================================================================================
+
+
+# app/utils/video_converter.py
+
+import os
+import subprocess
+import json
+from flask import current_app
+
+
+def get_ffmpeg_path():
+    """Возвращает путь к ffmpeg.exe (портативный или системный)"""
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    portable = os.path.join(project_root, 'ffmpeg', 'ffmpeg.exe')
+    if os.path.exists(portable):
+        return portable
+    return 'ffmpeg'
+
+
+def get_ffprobe_path():
+    """Возвращает путь к ffprobe.exe"""
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    portable = os.path.join(project_root, 'ffmpeg', 'ffprobe.exe')
+    if os.path.exists(portable):
+        return portable
+    return 'ffprobe'
+
+
+FFMPEG = get_ffmpeg_path()
+FFPROBE = get_ffprobe_path()
+
+
+def get_video_info(input_path):
+    """
+    Получает информацию о видео через ffprobe.
+    Возвращает (width, height, duration, has_audio)
+    """
+    try:
+        cmd = [
+            FFPROBE,
+            '-v', 'error',
+            '-show_streams',
+            '-show_format',
+            '-of', 'json',
+            input_path
+        ]
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+
+        data = json.loads(result.stdout)
+        streams = data.get('streams', [])
+        fmt = data.get('format', {})
+
+        width = None
+        height = None
+        has_audio = False
+
+        for stream in streams:
+            if stream.get('codec_type') == 'video' and width is None:
+                width = int(stream.get('width', 0))
+                height = int(stream.get('height', 0))
+
+            if stream.get('codec_type') == 'audio':
+                has_audio = True
+
+        duration = float(fmt.get('duration', 0))
+
+        print(f"📹 ffprobe: {width}x{height}, {duration:.1f}s, аудио={'✅' if has_audio else '❌'}")
+
+        return width, height, duration, has_audio
+
+    except Exception as e:
+        print(f"❌ ffprobe ошибка: {e}")
+        return None, None, None, False
+
+
+def convert_to_quality(input_path, output_path, target_height, crf=23):
+    """
+    Конвертирует видео в нужное качество через subprocess.
+    Аудио всегда сохраняется если есть.
+
+    Returns:
+        bool: True если успешно
+    """
+    try:
+        width, height, duration, has_audio = get_video_info(input_path)
+
+        if not width or not height:
+            print(f"❌ Не удалось получить данные видео: {input_path}")
+            return False
+
+        # Считаем новый размер
+        if height > target_height:
+            new_height = target_height
+            new_width = int(width * (target_height / height))
+            # Делаем чётными (требование H.264)
+            new_width = new_width + (new_width % 2)
+            new_height = new_height + (new_height % 2)
+        else:
+            # Оригинал меньше — оставляем как есть, делаем чётными
+            new_width = width + (width % 2)
+            new_height = height + (height % 2)
+
+        print(f"⚙️  {target_height}p: {width}x{height} → {new_width}x{new_height}, аудио={'да' if has_audio else 'нет'}")
+
+        # Строим команду
+        cmd = [
+            FFMPEG,
+            '-y',                          # перезаписать если есть
+            '-i', input_path,              # входной файл
+
+            # Видео
+            '-map', '0:v:0',               # берём первый видеопоток
+            '-vf', f'scale={new_width}:{new_height}',  # масштаб
+            '-c:v', 'libx264',             # кодек
+            '-preset', 'medium',           # скорость/качество
+            '-crf', str(crf),              # качество
+            '-profile:v', 'high',          # профиль H.264
+            '-level', '4.0',
+        ]
+
+        # Аудио — если есть
+        if has_audio:
+            cmd += [
+                '-map', '0:a:0',           # берём первый аудиопоток
+                '-c:a', 'aac',             # кодек AAC
+                '-b:a', '192k',            # битрейт
+                '-ac', '2',                # стерео
+                '-ar', '48000',            # частота дискретизации
+            ]
+        else:
+            # Нет аудио — явно говорим ffmpeg не трогать аудио
+            cmd += ['-an']
+
+        cmd += [
+            '-movflags', '+faststart',     # для стриминга
+            output_path
+        ]
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True
+        )
+
+        if result.returncode != 0:
+            print(f"❌ FFmpeg ошибка при конвертации {target_height}p:")
+            print(result.stderr[-1000:] if result.stderr else "нет вывода")
+            return False
+
+        if not os.path.exists(output_path):
+            print(f"❌ Файл не создан: {output_path}")
+            return False
+
+        size_mb = os.path.getsize(output_path) / (1024 * 1024)
+
+        # Проверяем что в результате есть аудио если было в оригинале
+        if has_audio:
+            _, _, _, result_has_audio = get_video_info(output_path)
+            if not result_has_audio:
+                print(f"⚠️  Предупреждение: аудио потеряно в {target_height}p!")
+            else:
+                print(f"✅ {target_height}p готово: {size_mb:.1f} MB (аудио сохранено)")
+        else:
+            print(f"✅ {target_height}p готово: {size_mb:.1f} MB (без аудио)")
+
+        return True
+
+    except Exception as e:
+        print(f"❌ Ошибка конвертации {target_height}p: {e}")
+        return False
+
+
+def convert_video_all_qualities(input_path, base_filename, videos_folder):
+    """
+    Конвертирует видео во все доступные качества.
+
+    Returns:
+        dict: {'1080p': 'filename_1080p.mp4', '720p': 'filename_720p.mp4', ...}
+    """
+    width, height, duration, has_audio = get_video_info(input_path)
+
+    if not height:
+        print("❌ Не удалось получить информацию о видео")
+        return {}
+
+    print(f"\n{'='*50}")
+    print(f"🎬 Начало конвертации")
+    print(f"   Размер: {width}x{height}")
+    print(f"   Длина: {duration:.1f} сек")
+    print(f"   Аудио: {'есть' if has_audio else 'НЕТ'}")
+    print(f"{'='*50}")
+
+    # Определяем какие качества нужны
+    if height >= 1080:
+        qualities = [
+            (1080, 23),
+            (720,  24),
+            (480,  26),
+        ]
+    elif height >= 720:
+        qualities = [
+            (720, 23),
+            (480, 25),
+        ]
+    elif height >= 480:
+        qualities = [
+            (480, 23),
+        ]
+    elif height >= 360:
+        qualities = [
+            (360, 23),
+        ]
+    else:
+        qualities = [
+            (240, 23),
+        ]
+
+    available = {}
+
+    for target_height, crf in qualities:
+        filename = f'{base_filename}_{target_height}p.mp4'
+        output_path = os.path.join(videos_folder, filename)
+
+        success = convert_to_quality(
+            input_path=input_path,
+            output_path=output_path,
+            target_height=target_height,
+            crf=crf
+        )
+
+        if success:
+            available[f'{target_height}p'] = filename
+        else:
+            print(f"⚠️  Качество {target_height}p пропущено")
+
+    print(f"\n{'='*50}")
+    print(f"✅ Конвертация завершена: {list(available.keys())}")
+    print(f"{'='*50}\n")
+
+    return available
+
+
+def convert_video(input_path, output_path, max_resolution=1080, crf=23):
+    """
+    Конвертирует видео в одно качество (обратная совместимость).
+    """
+    return convert_to_quality(
+        input_path=input_path,
+        output_path=output_path,
+        target_height=max_resolution,
+        crf=crf
+    )
+
+
+def get_video_duration(video_path):
+    """Получает длительность видео в секундах"""
+    try:
+        _, _, duration, _ = get_video_info(video_path)
+        return duration
+    except Exception:
+        return None
+
+
+def get_video_resolution(video_path):
+    """Получает разрешение видео"""
+    try:
+        width, height, _, _ = get_video_info(video_path)
+        return width, height
+    except Exception:
+        return None
+
+==========================================================================================
+
+
+==========================================================================================
+📁 ФАЙЛ: app/utils/helpers.py
+🔖 СЕКЦИЯ: UTILS_HELPERS
+==========================================================================================
+
+
+# app/utils/helpers.py
+
+import os
+import secrets
+import uuid  # 🆕 ДОБАВИЛ
+import cv2
+from PIL import Image
+from flask import current_app
+from werkzeug.utils import secure_filename
+from app.utils.video_converter import convert_video
+
+# ============ РАЗРЕШЁННЫЕ РАСШИРЕНИЯ ============
+
+ALLOWED_VIDEO = {'mp4', 'avi', 'mov', 'mkv', 'webm'}
+ALLOWED_IMAGE = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
+
+
+def allowed_file(filename, allowed_extensions):
+    """Проверяет разрешено ли расширение файла"""
+    if '.' not in filename:
+        return False
+    ext = filename.rsplit('.', 1)[1].lower()
+    return ext in allowed_extensions
+
+
+def generate_unique_filename(original_filename):
+    """Генерирует уникальное имя файла, сохраняя расширение"""
+    ext = original_filename.rsplit('.', 1)[1].lower() if '.' in original_filename else ''
+    unique_name = uuid.uuid4().hex
+    return f"{unique_name}.{ext}" if ext else unique_name
+
+
+# ============ СОХРАНЕНИЕ ВИДЕО ============
+
+def save_video(video_file):
+    """
+    Сохраняет видео и конвертирует в несколько качеств
+
+    Returns:
+        tuple: (основной файл, словарь качеств) или (None, {})
+    """
+    import json
+    from app.utils.video_converter import convert_video_all_qualities
+
+    if not video_file:
+        return None, {}
+
+    # Генерируем уникальное базовое имя
+    base_name = secrets.token_hex(16)
+    _, file_ext = os.path.splitext(video_file.filename)
+
+    videos_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], 'videos')
+
+    # Временный файл оригинала
+    temp_filename = f'temp_{base_name}{file_ext}'
+    temp_filepath = os.path.join(videos_folder, temp_filename)
+
+    try:
+        # Сохраняем оригинал
+        video_file.save(temp_filepath)
+        original_size = os.path.getsize(temp_filepath) / (1024 * 1024)
+        current_app.logger.info(f'📁 Оригинал: {temp_filename} ({original_size:.1f} MB)')
+
+        # Конвертируем во все качества
+        available_qualities = convert_video_all_qualities(
+            input_path=temp_filepath,
+            base_filename=base_name,
+            videos_folder=videos_folder
+        )
+
+        # Удаляем временный файл
+        if os.path.exists(temp_filepath):
+            os.remove(temp_filepath)
+
+        if not available_qualities:
+            current_app.logger.error('❌ Не удалось сконвертировать ни одного качества')
+            return None, {}
+
+        # Основной файл = лучшее доступное качество
+        main_filename = None
+        for q in ['1080p', '720p', '480p', '360p', '240p']:
+            if q in available_qualities:
+                main_filename = available_qualities[q]
+                break
+
+        # Если ничего не нашли — берём первый доступный
+        if not main_filename and available_qualities:
+            main_filename = list(available_qualities.values())[0]
+
+        current_app.logger.info(f'✅ Готово: {available_qualities}')
+        return main_filename, available_qualities
+
+    except Exception as e:
+        current_app.logger.error(f'❌ Ошибка: {str(e)}')
+        if os.path.exists(temp_filepath):
+            os.remove(temp_filepath)
+        return None, {}
+
+
+# ============ ГЕНЕРАЦИЯ ПРЕВЬЮ ============
+
+def generate_thumbnail(video_filename):
+    """
+    Генерирует превью из первого кадра видео.
+    Возвращает имя файла превью или 'default_thumb.jpg' при ошибке.
+    """
+    try:
+        video_path = os.path.join(
+            current_app.config['UPLOAD_FOLDER'],
+            'videos',
+            video_filename
+        )
+
+        cap = cv2.VideoCapture(video_path)
+
+        if not cap.isOpened():
+            return 'default_thumb.jpg'
+
+        ret, frame = cap.read()
+        cap.release()
+
+        if not ret:
+            return 'default_thumb.jpg'
+
+        thumb_filename = f"thumb_{uuid.uuid4().hex}.jpg"
+        thumb_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], 'thumbnails')
+
+        os.makedirs(thumb_folder, exist_ok=True)
+
+        thumb_path = os.path.join(thumb_folder, thumb_filename)
+
+        cv2.imwrite(thumb_path, frame)
+
+        return thumb_filename
+
+    except Exception as e:
+        current_app.logger.error(f"Ошибка генерации превью: {e}")
+        return 'default_thumb.jpg'
+
+
+# ============ СОХРАНЕНИЕ ОБЛОЖКИ ============
+
+def save_thumbnail(thumbnail_file):
+    """
+    Сохраняет пользовательскую обложку видео.
+    Возвращает имя файла или None при ошибке.
+    """
+    if not thumbnail_file:
+        return None
+
+    if not allowed_file(thumbnail_file.filename, ALLOWED_IMAGE):
+        return None
+
+    filename = generate_unique_filename(thumbnail_file.filename)
+    upload_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], 'thumbnails')
+
+    os.makedirs(upload_folder, exist_ok=True)
+
+    filepath = os.path.join(upload_folder, filename)
+    thumbnail_file.save(filepath)
+
+    return filename
+
+
+# ============ СОХРАНЕНИЕ АВАТАРА ============
+
+def save_avatar(avatar_file, username):
+    """
+    Сохраняет аватар пользователя.
+    Возвращает имя файла или None при ошибке.
+    """
+    if not avatar_file:
+        return None
+
+    if not allowed_file(avatar_file.filename, ALLOWED_IMAGE):
+        return None
+
+    ext = avatar_file.filename.rsplit('.', 1)[1].lower()
+    filename = f"avatar_{secure_filename(username)}_{uuid.uuid4().hex[:8]}.{ext}"
+
+    upload_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], 'avatars')
+    os.makedirs(upload_folder, exist_ok=True)
+
+    filepath = os.path.join(upload_folder, filename)
+    avatar_file.save(filepath)
+
+    return filename
+
+
+# ============ УДАЛЕНИЕ ФАЙЛОВ ============
+
+def delete_file(filename, folder):
+    """
+    Удаляет файл из указанной папки.
+    folder: 'videos', 'thumbnails', 'avatars'
+    """
+    if not filename or filename.startswith('default'):
+        return False
+
+    try:
+        filepath = os.path.join(
+            current_app.config['UPLOAD_FOLDER'],
+            folder,
+            filename
+        )
+        if os.path.exists(filepath):
+            os.remove(filepath)
+            return True
+    except Exception as e:
+        current_app.logger.error(f"Ошибка удаления файла: {e}")
+
+    return False
+
+==========================================================================================
+
+
+==========================================================================================
+📁 ФАЙЛ: app/templates/video/watch.html
+🔖 СЕКЦИЯ: TEMPLATE_WATCH
+==========================================================================================
+
+
+<!-- app/templates/video/watch.html -->
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/player.css') }}">
+{% endblock %}
+
+{% block title %}{{ video.title }} — VidSphere{% endblock %}
+
+{% block content %}
+<div class="watch-compact">
+
+    <!-- КАСТОМНЫЙ ПЛЕЕР -->
+    <div class="player-center">
+        <div class="custom-player" id="customPlayer">
+            <div class="player-screen crt-screen">
+                <div class="scanlines"></div>
+                <video id="videoElement"
+                    poster="{{ url_for('static', filename='uploads/thumbnails/' + video.thumbnail) }}">
+                    <source src="{{ url_for('static', filename='uploads/videos/' + video.filename) }}" type="video/mp4">
+                </video>
+
+                <!-- Оверлей при паузе -->
+                <div class="play-overlay" id="playOverlay">
+                    <button class="big-play-btn" id="bigPlayBtn">▶</button>
+                </div>
+
+                <!-- Индикатор загрузки -->
+                <div class="loading-indicator" id="loadingIndicator">
+                    <span class="loader">◐</span>
+                </div>
+            </div>
+
+            <!-- КОНТРОЛЫ -->
+            <div class="player-controls">
+                <!-- Прогресс-бар -->
+                <div class="progress-wrap" id="progressWrap">
+                    <div class="progress-bg">
+                        <div class="progress-buffered" id="progressBuffered"></div>
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                    <div class="progress-tooltip" id="progressTooltip">0:00</div>
+                </div>
+
+                <!-- Нижняя панель -->
+                <div class="controls-row">
+                    <!-- Левая часть -->
+                    <div class="controls-left">
+                        <button class="ctrl-btn" id="playPauseBtn" title="Play/Pause">
+                            <span class="icon-play">▶</span>
+                            <span class="icon-pause">❚❚</span>
+                        </button>
+
+                        <button class="ctrl-btn" id="stopBtn" title="Stop">◼</button>
+                        <button class="ctrl-btn" id="rewindBtn" title="-10 сек">⏪</button>
+                        <button class="ctrl-btn" id="forwardBtn" title="+10 сек">⏩</button>
+
+                        <div class="volume-wrap">
+                            <button class="ctrl-btn" id="muteBtn" title="Mute">
+                                <span class="icon-vol">🔊</span>
+                                <span class="icon-mute">🔇</span>
+                            </button>
+                            <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="100">
+                        </div>
+
+                        <span class="time-display">
+                            <span id="currentTime">0:00</span>
+                            <span class="time-sep">/</span>
+                            <span id="duration">0:00</span>
+                        </span>
+                    </div>
+
+                    <!-- Правая часть -->
+<div class="controls-right">
+    <div class="speed-wrap">
+        <button class="ctrl-btn ctrl-text" id="speedBtn">1x</button>
+        <div class="speed-menu" id="speedMenu">
+            <button data-speed="0.25">0.25x</button>
+            <button data-speed="0.5">0.5x</button>
+            <button data-speed="0.75">0.75x</button>
+            <button data-speed="1" class="active">1x</button>
+            <button data-speed="1.25">1.25x</button>
+            <button data-speed="1.5">1.5x</button>
+            <button data-speed="2">2x</button>
+        </div>
+    </div>
+
+    <!-- 🆕 КАЧЕСТВО ВИДЕО -->
+    {% set qualities = video.get_qualities() %}
+    {% if qualities %}
+    <div class="quality-wrap">
+        <button class="ctrl-btn ctrl-text" id="qualityBtn">⚙️ Авто</button>
+        <div class="quality-menu" id="qualityMenu">
+            {% for q, filename in qualities.items() %}
+            <button data-quality="{{ q }}"
+                    data-url="{{ url_for('static', filename='uploads/videos/' + filename) }}">
+                {{ q }}
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <button class="ctrl-btn" id="pipBtn" title="Картинка в картинке">🖼</button>
+    <button class="ctrl-btn" id="wideBtn" title="Широкий режим">⬌</button>
+    <button class="ctrl-btn" id="fullscreenBtn" title="На весь экран">⛶</button>
+</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ИНФО-СТРОКА -->
+    <div class="info-bar">
+        <div class="info-left">
+            <span class="mood-icon">{{ video.mood_emoji() }}</span>
+            <h1 class="title glitch-hover">{{ video.title }}</h1>
+            {% if video.visibility == 'unlisted' %}
+                <span class="badge-unlisted">🔗</span>
+            {% endif %}
+        </div>
+        <div class="info-right">
+            <span class="stat">👁 {{ video.views }}</span>
+            <span class="stat">📅 {{ video.created_at.strftime('%d.%m') }}</span>
+            <button class="btn-icon copy-link-btn glitch-hover"
+                    data-url="{{ url_for('video.watch', video_id=video.id, _external=True) }}"
+                    title="Копировать">📋</button>
+        </div>
+    </div>
+
+    <!-- АВТОР + ТЕГИ + РЕАКЦИИ -->
+    <div class="actions-bar">
+        <div class="author-tags-box">
+            <a href="{{ url_for('user.profile', username=video.author.username) }}" class="author-link glitch-hover">
+                <img src="{{ url_for('static', filename='uploads/avatars/' + video.author.avatar) }}"
+                     class="ava" onerror="this.src='{{ url_for('static', filename='img/default_avatar.svg') }}'">
+                <span class="name">{{ video.author.username }}{% if video.author.is_admin() %} 👑{% endif %}</span>
+            </a>
+
+            {% if user and user.id != video.author.id %}
+                {% if user.is_following(video.author) %}
+                    <button class="btn-sub subscribed subscribe-ajax-btn glitch-hover"
+                        data-url="{{ url_for('user.unfollow', username=video.author.username) }}"
+                        data-username="{{ video.author.username }}">
+                        <span class="btn-text-default">✓</span>
+                        <span class="btn-text-hover">✕</span>
+                    </button>
+                {% else %}
+                    <button class="btn-sub subscribe-ajax-btn glitch-hover"
+                        data-url="{{ url_for('user.follow', username=video.author.username) }}"
+                        data-username="{{ video.author.username }}">+</button>
+                {% endif %}
+            {% endif %}
+
+            {% if video.tags %}
+                <div class="tags-inline">
+                    {% for tag in video.get_tags_list()[:4] %}
+                        <a href="{{ url_for('search.search', q=tag) }}" class="tag-sm glitch-hover">#{{ tag }}</a>
+                    {% endfor %}
+                    {% if video.get_tags_list()|length > 4 %}
+                        <span class="tag-more">+{{ video.get_tags_list()|length - 4 }}</span>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="reactions-box">
+            {% if user %}
+                <button class="react-btn reaction-ajax-btn glitch-hover {% if user_reaction == 'fire' %}active{% endif %}"
+                    data-url="{{ url_for('video.react', video_id=video.id, reaction_type='fire') }}" data-reaction="fire">
+                    🔥<span id="fire-count">{{ reactions_count.fire }}</span>
+                </button>
+                <button class="react-btn reaction-ajax-btn glitch-hover {% if user_reaction == 'good' %}active{% endif %}"
+                    data-url="{{ url_for('video.react', video_id=video.id, reaction_type='good') }}" data-reaction="good">
+                    👍<span id="good-count">{{ reactions_count.good }}</span>
+                </button>
+                <button class="react-btn reaction-ajax-btn glitch-hover {% if user_reaction == 'bad' %}active{% endif %}"
+                    data-url="{{ url_for('video.react', video_id=video.id, reaction_type='bad') }}" data-reaction="bad">
+                    👎<span id="bad-count">{{ reactions_count.bad }}</span>
+                </button>
+            {% else %}
+                <a href="{{ url_for('auth.login') }}" class="react-btn">🔥{{ reactions_count.fire }}</a>
+                <a href="{{ url_for('auth.login') }}" class="react-btn">👍{{ reactions_count.good }}</a>
+                <a href="{{ url_for('auth.login') }}" class="react-btn">👎{{ reactions_count.bad }}</a>
+            {% endif %}
+            <div class="karma-box">⚡<span id="karma-total">{{ video.karma }}</span></div>
+        </div>
+
+        {% if user and (user.id == video.author.id or user.is_admin()) %}
+            <form action="{{ url_for('video.delete', video_id=video.id) }}" method="POST" class="delete-inline">
+                <button type="submit" class="btn-del glitch-hover" title="Удалить">🗑️</button>
+            </form>
+        {% endif %}
+    </div>
+
+    {% if video.description %}
+    <details class="desc-compact">
+        <summary>📝 Описание</summary>
+        <p>{{ video.description }}</p>
+    </details>
+    {% endif %}
+
+    <!-- НИЖНЯЯ СЕКЦИЯ -->
+    <div class="bottom-grid">
+        <div class="comments-box">
+            <div class="box-header">
+                <span class="cursor-blink">▮</span> Комменты [<span id="comments-count">{{ comments|length }}</span>]
+            </div>
+
+            {% if user %}
+            <form id="comment-form" data-url="{{ url_for('video.add_comment', video_id=video.id) }}" class="comment-form">
+                <span class="prompt">></span>
+                <input type="text" class="comment-input" placeholder="Написать..." required maxlength="500">
+                <button type="submit" class="btn-send glitch-hover">➤</button>
+            </form>
+            {% else %}
+            <p class="login-hint"><a href="{{ url_for('auth.login') }}">Войти</a></p>
+            {% endif %}
+
+<div class="comments-list" id="comments-list">
+    {% for comment in comments %}
+    <div class="comment-block" id="comment-{{ comment.id }}">
+
+        <!-- КОММЕНТАРИЙ -->
+        <div class="comment">
+            <img src="{{ url_for('static', filename='uploads/avatars/' + comment.author.avatar) }}"
+                 class="comment-avatar"
+                 onerror="this.src='{{ url_for('static', filename='img/default_avatar.svg') }}'">
+            <div class="comment-body">
+                <div class="comment-header">
+                    <span class="c-author">{{ comment.author.username }}</span>
+                    <span class="c-date">{{ comment.created_at.strftime('%d.%m.%Y') }}</span>
+                </div>
+                <span class="c-text">{{ comment.text }}</span>
+
+                <!-- Действия с комментарием -->
+                <div class="comment-actions">
+                    {% if user %}
+                    <!-- Лайк -->
+                    <button class="comment-react-btn like-btn"
+                            data-url="{{ url_for('video.react_comment', video_id=video.id, comment_id=comment.id, reaction_type='like') }}"
+                            data-comment-id="{{ comment.id }}">
+                        👍 <span class="like-count">{{ comment.likes_count() }}</span>
+                    </button>
+
+                    <!-- Дизлайк -->
+                    <button class="comment-react-btn dislike-btn"
+                            data-url="{{ url_for('video.react_comment', video_id=video.id, comment_id=comment.id, reaction_type='dislike') }}"
+                            data-comment-id="{{ comment.id }}">
+                        👎 <span class="dislike-count">{{ comment.dislikes_count() }}</span>
+                    </button>
+
+                    <!-- Ответить -->
+                    <button class="comment-reply-toggle"
+                            data-comment-id="{{ comment.id }}">
+                        💬 Ответить
+                        {% if comment.replies_count() > 0 %}
+                        ({{ comment.replies_count() }})
+                        {% endif %}
+                    </button>
+                    {% else %}
+                    <span class="c-likes">👍 {{ comment.likes_count() }}</span>
+                    <span class="c-dislikes">👎 {{ comment.dislikes_count() }}</span>
+                    {% endif %}
+
+                    <!-- Удалить -->
+                    {% if user and (user.id == comment.user_id or user.id == video.user_id or user.is_moderator()) %}
+                    <button class="btn-delete-comment"
+                            data-url="{{ url_for('video.delete_comment', video_id=video.id, comment_id=comment.id) }}"
+                            title="Удалить">❌</button>
+                    {% endif %}
+                </div>
+
+                <!-- Форма ответа (скрыта по умолчанию) -->
+                {% if user %}
+                <div class="reply-form-wrap" id="reply-form-{{ comment.id }}" style="display: none;">
+                    <form class="reply-form"
+                          data-url="{{ url_for('video.add_reply', video_id=video.id, comment_id=comment.id) }}"
+                          data-comment-id="{{ comment.id }}">
+                        <span class="prompt">></span>
+                        <input type="text" class="comment-input reply-input"
+                               placeholder="Ответить {{ comment.author.username }}..."
+                               required maxlength="500">
+                        <button type="submit" class="btn-send">➤</button>
+                    </form>
+                </div>
+                {% endif %}
+
+                <!-- Ответы -->
+                {% if comment.replies_count() > 0 %}
+                <div class="replies-list" id="replies-{{ comment.id }}">
+                    {% for reply in comment.replies.order_by('created_at').all() %}
+                    <div class="reply" id="reply-{{ reply.id }}">
+                        <img src="{{ url_for('static', filename='uploads/avatars/' + reply.author.avatar) }}"
+                             class="comment-avatar comment-avatar-sm"
+                             onerror="this.src='{{ url_for('static', filename='img/default_avatar.svg') }}'">
+                        <div class="comment-body">
+                            <div class="comment-header">
+                                <span class="c-author">{{ reply.author.username }}</span>
+                                <span class="c-date">{{ reply.created_at.strftime('%d.%m.%Y') }}</span>
+                            </div>
+                            <span class="c-text">{{ reply.text }}</span>
+
+                            {% if user and (user.id == reply.user_id or user.id == video.user_id or user.is_moderator()) %}
+                            <button class="btn-delete-reply"
+                                    data-url="{{ url_for('video.delete_reply', video_id=video.id, comment_id=comment.id, reply_id=reply.id) }}"
+                                    data-reply-id="{{ reply.id }}"
+                                    title="Удалить ответ">❌</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="replies-list" id="replies-{{ comment.id }}"></div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <p class="empty-hint">// Пусто</p>
+    {% endfor %}
+</div>
+        </div>
+
+        <div class="related-box">
+            <div class="box-header">
+                <span class="cursor-blink">▮</span> Похожие
+            </div>
+            <div class="related-list">
+                {% for rv in related_videos[:6] %}
+                <a href="{{ url_for('video.watch', video_id=rv.id) }}" class="related-item glitch-hover">
+                    <img src="{{ url_for('static', filename='uploads/thumbnails/' + rv.thumbnail) }}"
+                         class="r-thumb" onerror="this.src='{{ url_for('static', filename='img/default_thumb.svg') }}'">
+                    <div class="r-info">
+                        <span class="r-title">{{ rv.title|truncate(28) }}</span>
+                        <span class="r-meta">@{{ rv.author.username }} • ⚡{{ rv.karma }}</span>
+                    </div>
+                </a>
+                {% else %}
+                <p class="empty-hint">// Нет</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+==========================================================================================
+
+
+==========================================================================================
+📁 ФАЙЛ: app/static/js/main.js
+🔖 СЕКЦИЯ: STATIC_MAIN_JS
+==========================================================================================
+
+
+/* app/static/js/main.js */
+
+document.addEventListener('DOMContentLoaded', function() {
+    initThemeToggle();
+    initHeroCarousel();
+    initMoodTabs();
+    initOverviewCards();
+    initQuickMoodButtons();
+    initFileUpload();
+    initAvatarPreview();
+    initAutoHideAlerts();
+    initSubscriptionsCarousel();
+    initReactions();
+    initCommentForm();
+    initSubscribeButtons();
+    initThumbnailChoice();
+    initCopyLink();
+    initCustomPlayer();
+    initVideoUploadProgress();
+    initDeleteComment();
+    initQualitySelector();
+    initCommentReactions();
+    initCommentReplies();
+    initDeleteReply();
+    initUploadTabs();
+    initUrlImport();
+});
+
+/* ============================================
+   ТЕМА
+============================================ */
+
+function initThemeToggle() {
+    var toggle = document.getElementById('themeToggle');
+    if (!toggle) return;
+
+    var savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeIcon(savedTheme);
+    updateThemeMeta(savedTheme);
+
+    toggle.addEventListener('click', function() {
+        var currentTheme = document.documentElement.getAttribute('data-theme');
+        var newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        updateThemeIcon(newTheme);
+        updateThemeMeta(newTheme);
+    });
+}
+
+function updateThemeIcon(theme) {
+    var toggle = document.getElementById('themeToggle');
+    if (!toggle) return;
+    var icon = toggle.querySelector('.theme-icon');
+    if (icon) {
+        icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
+}
+
+function updateThemeMeta(theme) {
+    var meta = document.getElementById('themeColorMeta');
+    if (!meta) return;
+    meta.setAttribute('content', theme === 'dark' ? '#282828' : '#fbf1c7');
+}
+
+/* ============================================
+   HERO КАРУСЕЛЬ
+============================================ */
+
+function initHeroCarousel() {
+    var carousel = document.getElementById('heroCarousel');
+    if (!carousel) return;
+
+    var slides = carousel.querySelectorAll('.hero-slide');
+    var dots = document.querySelectorAll('.hero-dot');
+    if (slides.length === 0) return;
+
+    var currentIndex = 0;
+    var interval = null;
+    var SLIDE_DURATION = 4000; // 4 секунды на слайд
+
+    function syncVideos() {
+        slides.forEach(function(slide, index) {
+            var video = slide.querySelector('.hero-video');
+            if (!video) return;
+
+            if (index === currentIndex) {
+                video.muted = true;
+                video.currentTime = 0;
+
+                var playPromise = video.play();
+                if (playPromise && typeof playPromise.catch === 'function') {
+                    playPromise.catch(function() {});
+                }
+            } else {
+                video.pause();
+                video.currentTime = 0;
+            }
+        });
+    }
+
+    function goToSlide(index) {
+        slides.forEach(function(slide) {
+            slide.classList.remove('active');
+        });
+
+        dots.forEach(function(dot) {
+            dot.classList.remove('active');
+        });
+
+        currentIndex = index;
+
+        if (currentIndex >= slides.length) currentIndex = 0;
+        if (currentIndex < 0) currentIndex = slides.length - 1;
+
+        slides[currentIndex].classList.add('active');
+
+        if (dots[currentIndex]) {
+            dots[currentIndex].classList.add('active');
+        }
+
+        syncVideos();
+    }
+
+    function nextSlide() {
+        goToSlide(currentIndex + 1);
+    }
+
+    function startAutoplay() {
+        stopAutoplay();
+        interval = setInterval(nextSlide, SLIDE_DURATION);
+    }
+
+    function stopAutoplay() {
+        if (interval) {
+            clearInterval(interval);
+            interval = null;
+        }
+    }
+
+    dots.forEach(function(dot, index) {
+        dot.addEventListener('click', function() {
+            goToSlide(index);
+            startAutoplay();
+        });
+    });
+
+    goToSlide(0);
+    startAutoplay();
+}
+
+/* ============================================
+   ТАБЫ НАСТРОЕНИЙ
+============================================ */
+
+function initMoodTabs() {
+    var tabs = document.querySelectorAll('.mood-tab');
+    var panels = document.querySelectorAll('.mood-panel');
+    if (tabs.length === 0) return;
+
+    var savedMood = localStorage.getItem('lampix_home_mood');
+    if (savedMood) {
+        var savedTab = document.querySelector('.mood-tab[data-mood="' + savedMood + '"]');
+        var savedPanel = document.querySelector('.mood-panel[data-mood="' + savedMood + '"]');
+        if (savedTab && savedPanel) {
+            tabs.forEach(function(t) { t.classList.remove('active'); });
+            panels.forEach(function(p) { p.classList.remove('active'); });
+            savedTab.classList.add('active');
+            savedPanel.classList.add('active');
+        }
+    }
+
+    tabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            var mood = this.getAttribute('data-mood');
+
+            tabs.forEach(function(t) { t.classList.remove('active'); });
+            panels.forEach(function(p) { p.classList.remove('active'); });
+
+            this.classList.add('active');
+
+            var panel = document.querySelector('.mood-panel[data-mood="' + mood + '"]');
+            if (panel) panel.classList.add('active');
+
+            localStorage.setItem('lampix_home_mood', mood);
+
+            if (window.innerWidth < 768) {
+                this.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+        });
+    });
+}
+
+/* ============================================
+   ИНТЕРАКТИВНЫЙ БЛОК ОБЗОРА ПЛАТФОРМЫ
+============================================ */
+
+function initOverviewCards() {
+    var cards = document.querySelectorAll('.signal-card-action');
+    var panels = document.querySelectorAll('.overview-panel');
+
+    if (cards.length === 0 || panels.length === 0) return;
+
+    cards.forEach(function(card) {
+        card.addEventListener('click', function() {
+            var overview = this.dataset.overview;
+
+            cards.forEach(function(c) { c.classList.remove('active'); });
+            panels.forEach(function(panel) { panel.classList.remove('active'); });
+
+            this.classList.add('active');
+
+            var targetPanel = document.querySelector(
+                '.overview-panel[data-overview-panel="' + overview + '"]'
+            );
+            if (targetPanel) targetPanel.classList.add('active');
+        });
+    });
+
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.overview-open-section');
+        if (!btn) return;
+
+        var mood = btn.dataset.moodTarget;
+        var browse = document.getElementById('browseSection');
+
+        if (mood) {
+            var tab = document.querySelector('.mood-tab[data-mood="' + mood + '"]');
+            if (tab) tab.click();
+        }
+
+        if (browse) {
+            browse.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    });
+}
+
+/* ============================================
+   БЫСТРЫЕ КНОПКИ НАСТРОЕНИЙ (HERO)
+============================================ */
+
+function initQuickMoodButtons() {
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.quick-mood-btn');
+        if (!btn) return;
+
+        var mood = btn.dataset.moodTarget;
+        var browse = document.getElementById('browseSection');
+
+        if (mood) {
+            var tab = document.querySelector('.mood-tab[data-mood="' + mood + '"]');
+            if (tab) tab.click();
+        }
+
+        if (browse) {
+            browse.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    });
+}
+
+/* ============================================
+   ЗАГРУЗКА ФАЙЛОВ
+============================================ */
+
+function initFileUpload() {
+    var fileInput = document.getElementById('videoInput');
+    if (!fileInput) return;
+
+    var fileUpload = fileInput.closest('.file-upload');
+    if (!fileUpload) return;
+
+    var fileLabel = fileUpload.querySelector('.file-label');
+    var fileText = fileUpload.querySelector('.file-text');
+    if (!fileLabel || !fileText) return;
+
+    fileInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            var file = this.files[0];
+            var sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            fileText.textContent = file.name + ' (' + sizeMB + ' MB)';
+            fileLabel.style.borderColor = 'var(--primary)';
+        }
+    });
+}
+
+/* ============================================
+   ПРЕВЬЮ АВАТАРА
+============================================ */
+
+function initAvatarPreview() {
+    var avatarInput = document.getElementById('avatarInput');
+    var avatarPreview = document.getElementById('avatarPreview');
+    if (!avatarInput || !avatarPreview) return;
+
+    avatarInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                avatarPreview.src = e.target.result;
+            };
+            reader.readAsDataURL(this.files[0]);
+        }
+    });
+}
+
+/* ============================================
+   АВТОСКРЫТИЕ АЛЕРТОВ
+============================================ */
+
+function initAutoHideAlerts() {
+    var alerts = document.querySelectorAll('.alert');
+    alerts.forEach(function(alert) {
+        setTimeout(function() {
+            alert.style.transition = 'opacity 0.3s ease';
+            alert.style.opacity = '0';
+            setTimeout(function() { alert.remove(); }, 300);
+        }, 5000);
+    });
+}
+
+/* ============================================
+   КАРУСЕЛЬ ПОДПИСОК
+============================================ */
+
+function initSubscriptionsCarousel() {
+    var bubbles = document.querySelectorAll('.channel-bubble');
+    var videoBlocks = document.querySelectorAll('.channel-videos');
+    if (bubbles.length === 0) return;
+
+    bubbles.forEach(function(bubble) {
+        bubble.addEventListener('click', function() {
+            var channelId = this.dataset.channelId;
+
+            bubbles.forEach(function(b) { b.classList.remove('active'); });
+            videoBlocks.forEach(function(v) { v.classList.remove('active'); });
+
+            this.classList.add('active');
+
+            var target = document.querySelector(
+                '.channel-videos[data-channel-id="' + channelId + '"]'
+            );
+            if (target) target.classList.add('active');
+        });
+    });
+}
+
+/* ============================================
+   AJAX РЕАКЦИИ НА ВИДЕО
+============================================ */
+
+function initReactions() {
+    var btns = document.querySelectorAll('.reaction-ajax-btn');
+
+    btns.forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            fetch(this.dataset.url, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) updateReactionUI(data);
+            })
+            .catch(function(err) { console.error(err); });
+        });
+    });
+}
+
+function updateReactionUI(data) {
+    document.querySelectorAll('.reaction-ajax-btn').forEach(function(btn) {
+        btn.classList.remove('active');
+        if (btn.dataset.reaction === data.user_reaction) btn.classList.add('active');
+    });
+
+    var fire = document.getElementById('fire-count');
+    var good = document.getElementById('good-count');
+    var bad = document.getElementById('bad-count');
+    var karma = document.getElementById('karma-total');
+
+    if (fire && data.reactions) fire.textContent = data.reactions.fire;
+    if (good && data.reactions) good.textContent = data.reactions.good;
+    if (bad && data.reactions) bad.textContent = data.reactions.bad;
+    if (karma) karma.textContent = data.karma;
+}
+
+/* ============================================
+   AJAX КОММЕНТАРИИ
+============================================ */
+
+function initCommentForm() {
+    var form = document.getElementById('comment-form');
+    if (!form) return;
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        var input = form.querySelector('.comment-input') ||
+                    form.querySelector('textarea') ||
+                    form.querySelector('input[type="text"]');
+        if (!input) return;
+
+        var text = input.value.trim();
+        var url = form.dataset.url;
+        if (!text) return;
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ text: text })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                addCommentToList(data.comment);
+                input.value = '';
+                showToast('Комментарий добавлен!', 'success');
+
+                var countEl = document.getElementById('comments-count');
+                if (countEl) {
+                    countEl.textContent = parseInt(countEl.textContent || 0, 10) + 1;
+                }
+            }
+        })
+        .catch(function(err) {
+            console.error(err);
+            showToast('Ошибка отправки', 'danger');
+        });
+    });
+}
+
+function addCommentToList(comment) {
+    var list = document.getElementById('comments-list');
+    if (!list) return;
+
+    var empty = list.querySelector('.empty-hint');
+    if (empty) empty.remove();
+
+    var html = '' +
+        '<div class="comment-block comment-new" id="comment-' + comment.id + '">' +
+            '<div class="comment">' +
+                '<div class="comment-body">' +
+                    '<div class="comment-header">' +
+                        '<span class="c-author">' + escapeHtml(comment.author.username) + '</span>' +
+                    '</div>' +
+                    '<span class="c-text">' + escapeHtml(comment.text) + '</span>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+
+    list.insertAdjacentHTML('afterbegin', html);
+
+    var newComment = list.querySelector('.comment-new');
+    if (newComment) {
+        newComment.style.opacity = '0';
+        newComment.style.transform = 'translateY(-10px)';
+        setTimeout(function() {
+            newComment.style.transition = 'all 0.3s ease';
+            newComment.style.opacity = '1';
+            newComment.style.transform = 'translateY(0)';
+            newComment.classList.remove('comment-new');
+        }, 10);
+    }
+}
+
+function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/* ============================================
+   AJAX ПОДПИСКИ
+============================================ */
+
+function initSubscribeButtons() {
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.subscribe-ajax-btn');
+        if (!btn) return;
+
+        e.preventDefault();
+
+        var url = btn.dataset.url;
+        var username = btn.dataset.username;
+        btn.disabled = true;
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                updateSubscribeButton(btn, username, data.is_following);
+                showToast(
+                    data.is_following
+                        ? 'Вы подписались на ' + username
+                        : 'Вы отписались от ' + username,
+                    data.is_following ? 'success' : 'info'
+                );
+            }
+            btn.disabled = false;
+        })
+        .catch(function(err) {
+            console.error(err);
+            btn.disabled = false;
+            showToast('Ошибка', 'danger');
+        });
+    });
+}
+
+function updateSubscribeButton(btn, username, isFollowing) {
+    if (isFollowing) {
+        btn.classList.remove('not-subscribed');
+        btn.classList.add('subscribed');
+        btn.dataset.url = '/user/' + username + '/unfollow';
+        if (btn.classList.contains('btn-sub')) {
+            btn.innerHTML = '<span class="btn-text-default">✓</span><span class="btn-text-hover">✕</span>';
+        } else {
+            btn.innerHTML = '<span class="btn-text-default">✓ Вы подписаны</span><span class="btn-text-hover">Отписаться</span>';
+        }
+    } else {
+        btn.classList.remove('subscribed');
+        btn.classList.add('not-subscribed');
+        btn.dataset.url = '/user/' + username + '/follow';
+        if (btn.classList.contains('btn-sub')) {
+            btn.innerHTML = '+';
+        } else {
+            btn.innerHTML = '+ Подписаться';
+        }
+    }
+}
+
+/* ============================================
+   ВЫБОР ОБЛОЖКИ
+============================================ */
+
+function initThumbnailChoice() {
+    var cards = document.querySelectorAll('.radio-card');
+    var customUpload = document.getElementById('customThumbUpload');
+    if (cards.length === 0) return;
+
+    cards.forEach(function(card) {
+        card.addEventListener('click', function() {
+            cards.forEach(function(c) { c.classList.remove('active'); });
+            this.classList.add('active');
+
+            if (this.dataset.target === 'custom' && customUpload) {
+                customUpload.style.display = 'block';
+            } else if (customUpload) {
+                customUpload.style.display = 'none';
+            }
+        });
+    });
+}
+
+/* ============================================
+   КОПИРОВАНИЕ ССЫЛКИ
+============================================ */
+
+function initCopyLink() {
+    var btns = document.querySelectorAll('.copy-link-btn');
+
+    btns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var url = this.dataset.url;
+
+            navigator.clipboard.writeText(url)
+                .then(function() {
+                    showToast('Ссылка скопирована!', 'success');
+                })
+                .catch(function() {
+                    var textarea = document.createElement('textarea');
+                    textarea.value = url;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    showToast('Ссылка скопирована!', 'success');
+                });
+        });
+    });
+}
+
+/* ============================================
+   КАСТОМНЫЙ ВИДЕО ПЛЕЕР
+============================================ */
+
+function initCustomPlayer() {
+    var player = document.getElementById('customPlayer');
+    var video = document.getElementById('videoElement');
+    if (!player || !video) return;
+
+    var playPauseBtn = document.getElementById('playPauseBtn');
+    var bigPlayBtn = document.getElementById('bigPlayBtn');
+    var stopBtn = document.getElementById('stopBtn');
+    var rewindBtn = document.getElementById('rewindBtn');
+    var forwardBtn = document.getElementById('forwardBtn');
+    var muteBtn = document.getElementById('muteBtn');
+    var volumeSlider = document.getElementById('volumeSlider');
+    var progressWrap = document.getElementById('progressWrap');
+    var progressBar = document.getElementById('progressBar');
+    var progressBuffered = document.getElementById('progressBuffered');
+    var progressTooltip = document.getElementById('progressTooltip');
+    var currentTimeEl = document.getElementById('currentTime');
+    var durationEl = document.getElementById('duration');
+    var speedBtn = document.getElementById('speedBtn');
+    var speedMenu = document.getElementById('speedMenu');
+    var pipBtn = document.getElementById('pipBtn');
+    var fullscreenBtn = document.getElementById('fullscreenBtn');
+    var wideBtn = document.getElementById('wideBtn');
+    var watchContainer = document.querySelector('.watch-compact');
+
+    function formatTime(seconds) {
+        if (isNaN(seconds)) return '0:00';
+        var mins = Math.floor(seconds / 60);
+        var secs = Math.floor(seconds % 60);
+        return mins + ':' + (secs < 10 ? '0' : '') + secs;
+    }
+
+    function togglePlay() {
+        if (video.paused) video.play();
+        else video.pause();
+    }
+
+    if (playPauseBtn) playPauseBtn.addEventListener('click', togglePlay);
+    if (bigPlayBtn) bigPlayBtn.addEventListener('click', togglePlay);
+
+    video.addEventListener('click', function(e) {
+        if (e.target === video) togglePlay();
+    });
+
+    video.addEventListener('play', function() { player.classList.add('playing'); });
+    video.addEventListener('pause', function() { player.classList.remove('playing'); });
+    video.addEventListener('ended', function() { player.classList.remove('playing'); });
+
+    if (stopBtn) {
+        stopBtn.addEventListener('click', function() {
+            video.pause();
+            video.currentTime = 0;
+            player.classList.remove('playing');
+        });
+    }
+
+    if (rewindBtn) {
+        rewindBtn.addEventListener('click', function() {
+            video.currentTime = Math.max(0, video.currentTime - 10);
+        });
+    }
+
+    if (forwardBtn) {
+        forwardBtn.addEventListener('click', function() {
+            video.currentTime = Math.min(video.duration || 0, video.currentTime + 10);
+        });
+    }
+
+    if (muteBtn) {
+        muteBtn.addEventListener('click', function() {
+            video.muted = !video.muted;
+            player.classList.toggle('muted', video.muted);
+            if (volumeSlider) volumeSlider.value = video.muted ? 0 : video.volume * 100;
+        });
+    }
+
+    if (volumeSlider) {
+        volumeSlider.addEventListener('input', function() {
+            video.volume = this.value / 100;
+            video.muted = this.value == 0;
+            player.classList.toggle('muted', video.muted);
+        });
+    }
+
+    video.addEventListener('timeupdate', function() {
+        if (progressBar && video.duration) {
+            progressBar.style.width = (video.currentTime / video.duration) * 100 + '%';
+        }
+        if (currentTimeEl) currentTimeEl.textContent = formatTime(video.currentTime);
+    });
+
+    video.addEventListener('loadedmetadata', function() {
+        if (durationEl) durationEl.textContent = formatTime(video.duration);
+    });
+
+    video.addEventListener('progress', function() {
+        if (progressBuffered && video.buffered.length > 0 && video.duration) {
+            var buffered = video.buffered.end(video.buffered.length - 1);
+            progressBuffered.style.width = (buffered / video.duration) * 100 + '%';
+        }
+    });
+
+    if (progressWrap) {
+        progressWrap.addEventListener('click', function(e) {
+            var rect = this.getBoundingClientRect();
+            video.currentTime = ((e.clientX - rect.left) / rect.width) * video.duration;
+        });
+
+        progressWrap.addEventListener('mousemove', function(e) {
+            if (progressTooltip && video.duration) {
+                var rect = this.getBoundingClientRect();
+                var time = ((e.clientX - rect.left) / rect.width) * video.duration;
+                progressTooltip.textContent = formatTime(time);
+                progressTooltip.style.left = (e.clientX - rect.left) + 'px';
+            }
+        });
+    }
+
+    if (speedMenu) {
+        var speedBtns = speedMenu.querySelectorAll('button');
+        speedBtns.forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var speed = parseFloat(this.dataset.speed);
+                video.playbackRate = speed;
+                if (speedBtn) speedBtn.textContent = speed + 'x';
+                speedBtns.forEach(function(b) { b.classList.remove('active'); });
+                this.classList.add('active');
+            });
+        });
+    }
+
+    if (pipBtn) {
+        if (!('pictureInPictureEnabled' in document) || !document.pictureInPictureEnabled) {
+            pipBtn.style.display = 'none';
+        } else {
+            pipBtn.addEventListener('click', function() {
+                if (document.pictureInPictureElement) {
+                    document.exitPictureInPicture().catch(function(err) { console.log(err); });
+                } else {
+                    video.requestPictureInPicture().catch(function() {
+                        showToast('PiP не поддерживается', 'warning');
+                    });
+                }
+            });
+        }
+    }
+
+    function toggleFullscreen() {
+        var isFs = document.fullscreenElement ||
+                   document.webkitFullscreenElement ||
+                   document.mozFullScreenElement ||
+                   document.msFullscreenElement;
+
+        if (!isFs) {
+            if (player.requestFullscreen) player.requestFullscreen();
+            else if (player.webkitRequestFullscreen) player.webkitRequestFullscreen();
+            else if (player.mozRequestFullScreen) player.mozRequestFullScreen();
+            else if (player.msRequestFullscreen) player.msRequestFullscreen();
+        } else {
+            if (document.exitFullscreen) document.exitFullscreen();
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+            else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+            else if (document.msExitFullscreen) document.msExitFullscreen();
+        }
+    }
+
+    if (fullscreenBtn) fullscreenBtn.addEventListener('click', toggleFullscreen);
+    video.addEventListener('dblclick', toggleFullscreen);
+
+    function onFullscreenChange() {
+        var isFs = document.fullscreenElement ||
+                   document.webkitFullscreenElement ||
+                   document.mozFullScreenElement ||
+                   document.msFullscreenElement;
+        player.classList.toggle('fullscreen', !!isFs);
+    }
+
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+    document.addEventListener('mozfullscreenchange', onFullscreenChange);
+    document.addEventListener('MSFullscreenChange', onFullscreenChange);
+
+    if (wideBtn && watchContainer) {
+        wideBtn.addEventListener('click', function() {
+            watchContainer.classList.toggle('wide-mode');
+            this.classList.toggle('active');
+            this.textContent = watchContainer.classList.contains('wide-mode') ? '⬄' : '⬌';
+            this.title = watchContainer.classList.contains('wide-mode') ? 'Обычный режим' : 'Широкий режим';
+        });
+    }
+
+    video.addEventListener('waiting', function() { player.classList.add('loading'); });
+    video.addEventListener('canplay', function() { player.classList.remove('loading'); });
+    video.addEventListener('error', function() {
+        player.classList.remove('loading');
+        showToast('Ошибка загрузки видео', 'danger');
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        if (!document.getElementById('customPlayer')) return;
+
+        switch (e.code) {
+            case 'Space':
+                e.preventDefault();
+                togglePlay();
+                break;
+            case 'ArrowLeft':
+                e.preventDefault();
+                video.currentTime = Math.max(0, video.currentTime - 5);
+                break;
+            case 'ArrowRight':
+                e.preventDefault();
+                video.currentTime = Math.min(video.duration || 0, video.currentTime + 5);
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                video.volume = Math.min(1, video.volume + 0.1);
+                if (volumeSlider) volumeSlider.value = video.volume * 100;
+                break;
+            case 'ArrowDown':
+                e.preventDefault();
+                video.volume = Math.max(0, video.volume - 0.1);
+                if (volumeSlider) volumeSlider.value = video.volume * 100;
+                break;
+            case 'KeyM':
+                video.muted = !video.muted;
+                player.classList.toggle('muted', video.muted);
+                if (volumeSlider) volumeSlider.value = video.muted ? 0 : video.volume * 100;
+                break;
+            case 'KeyF':
+                toggleFullscreen();
+                break;
+            case 'KeyW':
+                if (wideBtn) wideBtn.click();
+                break;
+            case 'Escape':
+                if (document.fullscreenElement) document.exitFullscreen();
+                break;
+        }
+    });
+
+    video.play().catch(function() { player.classList.remove('playing'); });
+}
+
+/* ============================================
+   TOAST УВЕДОМЛЕНИЯ
+============================================ */
+
+function showToast(message, type) {
+    var existing = document.querySelectorAll('.toast');
+    existing.forEach(function(t) { t.remove(); });
+
+    var toast = document.createElement('div');
+    toast.className = 'toast toast-' + (type || 'info');
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    setTimeout(function() { toast.classList.add('show'); }, 10);
+
+    setTimeout(function() {
+        toast.classList.remove('show');
+        setTimeout(function() { toast.remove(); }, 300);
+    }, 3000);
+}
+
+/* ============================================
+   ИНДИКАТОР ЗАГРУЗКИ ВИДЕО
+============================================ */
+
+function initVideoUploadProgress() {
+    var uploadForm = document.getElementById('uploadForm');
+    var uploadBtn = document.getElementById('uploadBtn');
+    var progressDiv = document.getElementById('upload-progress');
+
+    if (!uploadForm || !uploadBtn || !progressDiv) return;
+
+    uploadForm.addEventListener('submit', function() {
+        var videoInput = document.getElementById('videoInput');
+        if (videoInput && videoInput.files.length > 0) {
+            progressDiv.style.display = 'block';
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = '⏳ Загрузка...';
+            setTimeout(function() {
+                progressDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
+    });
+}
+
+/* ============================================
+   УДАЛЕНИЕ КОММЕНТАРИЯ
+============================================ */
+
+function initDeleteComment() {
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.btn-delete-comment');
+        if (!btn) return;
+
+        e.preventDefault();
+        if (!confirm('Удалить комментарий?')) return;
+
+        fetch(btn.dataset.url, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                var comment = document.getElementById('comment-' + data.comment_id);
+                if (comment) {
+                    comment.classList.add('deleting');
+                    setTimeout(function() {
+                        comment.remove();
+                        var countEl = document.getElementById('comments-count');
+                        if (countEl) countEl.textContent = parseInt(countEl.textContent, 10) - 1;
+                        var list = document.getElementById('comments-list');
+                        if (list && list.children.length === 0) {
+                            list.innerHTML = '<p class="empty-hint">// Пусто</p>';
+                        }
+                    }, 300);
+                    showToast('Комментарий удалён', 'info');
+                }
+            } else {
+                showToast('Ошибка удаления', 'danger');
+            }
+        })
+        .catch(function(err) {
+            console.error(err);
+            showToast('Ошибка', 'danger');
+        });
+    });
+}
+
+/* ============================================
+   ВЫБОР КАЧЕСТВА ВИДЕО
+============================================ */
+
+function initQualitySelector() {
+    var qualityMenu = document.getElementById('qualityMenu');
+    var qualityBtn = document.getElementById('qualityBtn');
+    var video = document.getElementById('videoElement');
+
+    if (!qualityMenu || !qualityBtn || !video) return;
+
+    var qualityBtns = qualityMenu.querySelectorAll('button');
+
+    if (qualityBtns.length > 0) {
+        qualityBtns[0].classList.add('active');
+        qualityBtn.textContent = '⚙️ ' + qualityBtns[0].dataset.quality;
+    }
+
+    qualityBtns.forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+
+            var quality = this.dataset.quality;
+            var url = this.dataset.url;
+            var currentTime = video.currentTime;
+            var wasPlaying = !video.paused;
+
+            video.src = url;
+            video.load();
+
+            video.addEventListener('loadedmetadata', function() {
+                video.currentTime = currentTime;
+                if (wasPlaying) video.play();
+            }, { once: true });
+
+            qualityBtns.forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            qualityBtn.textContent = '⚙️ ' + quality;
+            showToast('Качество: ' + quality, 'info');
+        });
+    });
+}
+
+/* ============================================
+   РЕАКЦИИ НА КОММЕНТАРИИ
+============================================ */
+
+function initCommentReactions() {
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.comment-react-btn');
+        if (!btn) return;
+
+        e.preventDefault();
+
+        var commentId = btn.dataset.commentId;
+
+        fetch(btn.dataset.url, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                var block = document.getElementById('comment-' + commentId);
+                if (!block) return;
+
+                var likeBtn = block.querySelector('.like-btn');
+                var dislikeBtn = block.querySelector('.dislike-btn');
+
+                if (likeBtn) {
+                    likeBtn.classList.remove('active');
+                    likeBtn.querySelector('.like-count').textContent = data.likes;
+                }
+                if (dislikeBtn) {
+                    dislikeBtn.classList.remove('active');
+                    dislikeBtn.querySelector('.dislike-count').textContent = data.dislikes;
+                }
+
+                if (data.user_reaction === 'like' && likeBtn) likeBtn.classList.add('active');
+                else if (data.user_reaction === 'dislike' && dislikeBtn) dislikeBtn.classList.add('active');
+            }
+        })
+        .catch(function(err) { console.error(err); });
+    });
+}
+
+/* ============================================
+   ОТВЕТЫ НА КОММЕНТАРИИ
+============================================ */
+
+function initCommentReplies() {
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.comment-reply-toggle');
+        if (!btn) return;
+
+        var commentId = btn.dataset.commentId;
+        var formWrap = document.getElementById('reply-form-' + commentId);
+
+        if (formWrap) {
+            var isVisible = formWrap.style.display !== 'none';
+            formWrap.style.display = isVisible ? 'none' : 'block';
+            if (!isVisible) {
+                var input = formWrap.querySelector('.reply-input');
+                if (input) input.focus();
+            }
+        }
+    });
+
+    document.addEventListener('submit', function(e) {
+        var form = e.target.closest('.reply-form');
+        if (!form) return;
+
+        e.preventDefault();
+        if (!form.dataset.commentId) return;
+
+        var input = form.querySelector('.reply-input');
+        var text = input ? input.value.trim() : '';
+        var commentId = form.dataset.commentId;
+
+        if (!text) return;
+
+        fetch(form.dataset.url, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ text: text })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                var repliesList = document.getElementById('replies-' + commentId);
+
+                if (repliesList) {
+                    var html = '' +
+                        '<div class="reply" id="reply-' + data.reply.id + '">' +
+                            '<div class="comment-body">' +
+                                '<div class="comment-header">' +
+                                    '<span class="c-author">' + escapeHtml(data.reply.author.username) + '</span>' +
+                                    '<span class="c-date">' + data.reply.created_at + '</span>' +
+                                '</div>' +
+                                '<span class="c-text">' + escapeHtml(data.reply.text) + '</span>' +
+                            '</div>' +
+                        '</div>';
+                    repliesList.insertAdjacentHTML('beforeend', html);
+                }
+
+                if (input) input.value = '';
+
+                var formWrap = document.getElementById('reply-form-' + commentId);
+                if (formWrap) formWrap.style.display = 'none';
+
+                var toggleBtn = document.querySelector(
+                    '.comment-reply-toggle[data-comment-id="' + commentId + '"]'
+                );
+                if (toggleBtn) {
+                    var count = repliesList ? repliesList.children.length : 1;
+                    toggleBtn.textContent = '💬 Ответить (' + count + ')';
+                }
+
+                showToast('Ответ добавлен!', 'success');
+            }
+        })
+        .catch(function(err) {
+            console.error(err);
+            showToast('Ошибка отправки', 'danger');
+        });
+    });
+}
+
+/* ============================================
+   УДАЛЕНИЕ ОТВЕТА
+============================================ */
+
+function initDeleteReply() {
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.btn-delete-reply');
+        if (!btn) return;
+
+        e.preventDefault();
+        if (!confirm('Удалить ответ?')) return;
+
+        fetch(btn.dataset.url, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                var reply = document.getElementById('reply-' + data.reply_id);
+                if (reply) {
+                    reply.classList.add('deleting');
+                    setTimeout(function() { reply.remove(); }, 300);
+                }
+                showToast('Ответ удалён', 'info');
+            }
+        })
+        .catch(function(err) {
+            console.error(err);
+            showToast('Ошибка', 'danger');
+        });
+    });
+}
+
+/* ============================================
+   ВКЛАДКИ НА СТРАНИЦЕ ЗАГРУЗКИ
+============================================ */
+
+function initUploadTabs() {
+    var tabs = document.querySelectorAll('.upload-tab');
+    var panels = document.querySelectorAll('.upload-tab-panel');
+    if (tabs.length === 0) return;
+
+    tabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            var target = this.dataset.tab;
+
+            tabs.forEach(function(t) { t.classList.remove('active'); });
+            panels.forEach(function(p) { p.classList.remove('active'); });
+
+            this.classList.add('active');
+
+            var panel = document.getElementById('tab-' + target);
+            if (panel) panel.classList.add('active');
+        });
+    });
+}
+
+/* ============================================
+   ИМПОРТ ВИДЕО ПО ССЫЛКЕ
+============================================ */
+
+function initUrlImport() {
+    var checkBtn = document.getElementById('checkUrlBtn');
+    var urlInput = document.getElementById('videoUrlInput');
+    var step1 = document.getElementById('url-step-1');
+    var step2 = document.getElementById('url-step-2');
+    var urlHidden = document.getElementById('urlHidden');
+    var urlTitle = document.getElementById('urlTitle');
+    var urlDescription = document.getElementById('urlDescription');
+    var urlSource = document.getElementById('urlVideoSource');
+    var urlUploader = document.getElementById('urlVideoUploader');
+    var urlError = document.getElementById('url-check-error');
+    var urlLoading = document.getElementById('url-check-loading');
+    var changeBtn = document.getElementById('urlChangeBtn');
+    var urlUploadForm = document.getElementById('urlUploadForm');
+    var urlUploadBtn = document.getElementById('urlUploadBtn');
+    var urlProgress = document.getElementById('url-upload-progress');
+
+    if (!checkBtn || !urlInput) return;
+
+    function showError(msg) {
+        urlError.textContent = msg;
+        urlError.style.display = 'block';
+        urlLoading.style.display = 'none';
+    }
+
+    function hideError() {
+        urlError.style.display = 'none';
+    }
+
+    checkBtn.addEventListener('click', function() {
+        var url = urlInput.value.trim();
+
+        if (!url) {
+            showError('Вставьте ссылку на видео');
+            return;
+        }
+
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            showError('Некорректная ссылка. Должна начинаться с http:// или https://');
+            return;
+        }
+
+        hideError();
+        urlLoading.style.display = 'block';
+        checkBtn.disabled = true;
+        checkBtn.textContent = '⏳ Проверяю...';
+
+var csrfToken = document.querySelector('meta[name="csrf-token"]')
+    ? document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+    : (document.querySelector('input[name="csrf_token"]')
+        ? document.querySelector('input[name="csrf_token"]').value
+        : '');
+
+fetch('/upload/check-url', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRFToken': csrfToken
+    },
+    body: JSON.stringify({ url: url })
+})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            checkBtn.disabled = false;
+            checkBtn.textContent = '🔍 Проверить';
+            urlLoading.style.display = 'none';
+
+            if (!data.success) {
+                showError(data.error || 'Не удалось получить информацию о видео');
+                return;
+            }
+
+            urlHidden.value = url;
+
+            if (urlTitle) urlTitle.value = data.title || '';
+            if (urlDescription) urlDescription.value = data.description || '';
+            if (urlSource) urlSource.textContent = data.extractor || 'Внешний сервис';
+            if (urlUploader) urlUploader.textContent = data.uploader ? 'Автор: ' + data.uploader : '';
+
+            step1.style.display = 'none';
+            step2.style.display = 'block';
+
+            showToast('Информация о видео получена!', 'success');
+        })
+        .catch(function(err) {
+            checkBtn.disabled = false;
+            checkBtn.textContent = '🔍 Проверить';
+            urlLoading.style.display = 'none';
+            showError('Ошибка сети. Попробуйте ещё раз.');
+            console.error(err);
+        });
+    });
+
+    if (changeBtn) {
+        changeBtn.addEventListener('click', function() {
+            step2.style.display = 'none';
+            step1.style.display = 'block';
+            hideError();
+        });
+    }
+
+    if (urlUploadForm) {
+        urlUploadForm.addEventListener('submit', function() {
+            if (urlUploadBtn) {
+                urlUploadBtn.disabled = true;
+                urlUploadBtn.textContent = '⏳ Импортируем...';
+            }
+            if (urlProgress) {
+                urlProgress.style.display = 'block';
+            }
+        });
+    }
+
+    if (urlInput) {
+        urlInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                checkBtn.click();
+            }
+        });
+    }
+}
+
+==========================================================================================
