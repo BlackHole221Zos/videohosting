@@ -395,3 +395,6 @@ build/
 *.backup
 
 demo_videos/
+# Tooling
+collect_files.ps1
+project_context.txt

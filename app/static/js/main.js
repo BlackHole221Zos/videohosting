@@ -264,24 +264,29 @@ function initQuickMoodButtons() {
 ============================================ */
 
 function initFileUpload() {
-    var fileInput = document.getElementById('videoInput');
-    if (!fileInput) return;
+    var videoInput = document.getElementById('videoInput');
+    if (videoInput) {
+        videoInput.addEventListener('change', function() {
+            var fileUpload = this.closest('.file-upload');
+            var fileText = fileUpload ? fileUpload.querySelector('.file-text') : null;
+            if (this.files && this.files[0] && fileText) {
+                var file = this.files[0];
+                var sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                fileText.textContent = file.name + ' (' + sizeMB + ' MB)';
+            }
+        });
+    }
 
-    var fileUpload = fileInput.closest('.file-upload');
-    if (!fileUpload) return;
-
-    var fileLabel = fileUpload.querySelector('.file-label');
-    var fileText = fileUpload.querySelector('.file-text');
-    if (!fileLabel || !fileText) return;
-
-    fileInput.addEventListener('change', function() {
-        if (this.files && this.files[0]) {
-            var file = this.files[0];
-            var sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-            fileText.textContent = file.name + ' (' + sizeMB + ' MB)';
-            fileLabel.style.borderColor = 'var(--primary)';
-        }
-    });
+    // Добавь этот блок для обложки
+    var thumbInput = document.getElementById('thumbInput');
+    var thumbText = document.getElementById('thumbFileName');
+    if (thumbInput && thumbText) {
+        thumbInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                thumbText.textContent = this.files[0].name;
+            }
+        });
+    }
 }
 
 /* ============================================
@@ -867,7 +872,6 @@ function showToast(message, type) {
 /* ============================================
    ИНДИКАТОР ЗАГРУЗКИ ВИДЕО
 ============================================ */
-
 function initVideoUploadProgress() {
     var uploadForm = document.getElementById('uploadForm');
     var uploadBtn = document.getElementById('uploadBtn');
@@ -880,10 +884,7 @@ function initVideoUploadProgress() {
         if (videoInput && videoInput.files.length > 0) {
             progressDiv.style.display = 'block';
             uploadBtn.disabled = true;
-            uploadBtn.textContent = '⏳ Загрузка...';
-            setTimeout(function() {
-                progressDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 100);
+            uploadBtn.innerHTML = '⏳ Обработка...';
         }
     });
 }
@@ -1193,86 +1194,61 @@ function initUrlImport() {
 
     if (!checkBtn || !urlInput) return;
 
-    function showError(msg) {
-        urlError.textContent = msg;
-        urlError.style.display = 'block';
-        urlLoading.style.display = 'none';
-    }
-
-    function hideError() {
-        urlError.style.display = 'none';
-    }
-
     checkBtn.addEventListener('click', function() {
         var url = urlInput.value.trim();
-
         if (!url) {
-            showError('Вставьте ссылку на видео');
+            if (urlError) { urlError.textContent = 'Вставьте ссылку'; urlError.style.display = 'block'; }
             return;
         }
 
-        if (!url.startsWith('http://') && !url.startsWith('https://')) {
-            showError('Некорректная ссылка. Должна начинаться с http:// или https://');
-            return;
-        }
-
-        hideError();
-        urlLoading.style.display = 'block';
+        if (urlLoading) urlLoading.style.display = 'block';
+        if (urlError) urlError.style.display = 'none';
         checkBtn.disabled = true;
-        checkBtn.textContent = '⏳ Проверяю...';
 
-var csrfToken = document.querySelector('meta[name="csrf-token"]')
-    ? document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-    : (document.querySelector('input[name="csrf_token"]')
-        ? document.querySelector('input[name="csrf_token"]').value
-        : '');
+        // Ищем CSRF токен в мета-тегах
+        var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-fetch('/upload/check-url', {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-        'X-CSRFToken': csrfToken
-    },
-    body: JSON.stringify({ url: url })
-})
+        fetch('/upload/check-url', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ url: url })
+        })
         .then(function(r) { return r.json(); })
         .then(function(data) {
             checkBtn.disabled = false;
-            checkBtn.textContent = '🔍 Проверить';
-            urlLoading.style.display = 'none';
+            if (urlLoading) urlLoading.style.display = 'none';
 
             if (!data.success) {
-                showError(data.error || 'Не удалось получить информацию о видео');
+                if (urlError) { urlError.textContent = data.error; urlError.style.display = 'block'; }
                 return;
             }
 
-            urlHidden.value = url;
-
+            // Заполняем форму данными от YouTube/VK
+            if (urlHidden) urlHidden.value = url;
             if (urlTitle) urlTitle.value = data.title || '';
             if (urlDescription) urlDescription.value = data.description || '';
-            if (urlSource) urlSource.textContent = data.extractor || 'Внешний сервис';
+            if (urlSource) urlSource.textContent = 'Платформа: ' + (data.extractor || 'Внешняя');
             if (urlUploader) urlUploader.textContent = data.uploader ? 'Автор: ' + data.uploader : '';
 
-            step1.style.display = 'none';
-            step2.style.display = 'block';
-
-            showToast('Информация о видео получена!', 'success');
+            // Переключаем шаги
+            if (step1) step1.style.display = 'none';
+            if (step2) step2.style.display = 'block';
         })
         .catch(function(err) {
             checkBtn.disabled = false;
-            checkBtn.textContent = '🔍 Проверить';
-            urlLoading.style.display = 'none';
-            showError('Ошибка сети. Попробуйте ещё раз.');
+            if (urlLoading) urlLoading.style.display = 'none';
             console.error(err);
         });
     });
 
     if (changeBtn) {
         changeBtn.addEventListener('click', function() {
-            step2.style.display = 'none';
-            step1.style.display = 'block';
-            hideError();
+            if (step2) step2.style.display = 'none';
+            if (step1) step1.style.display = 'block';
         });
     }
 
@@ -1280,20 +1256,9 @@ fetch('/upload/check-url', {
         urlUploadForm.addEventListener('submit', function() {
             if (urlUploadBtn) {
                 urlUploadBtn.disabled = true;
-                urlUploadBtn.textContent = '⏳ Импортируем...';
+                urlUploadBtn.innerHTML = '⏳ Импортируем...';
             }
-            if (urlProgress) {
-                urlProgress.style.display = 'block';
-            }
-        });
-    }
-
-    if (urlInput) {
-        urlInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                checkBtn.click();
-            }
+            if (urlProgress) urlProgress.style.display = 'block';
         });
     }
 }
