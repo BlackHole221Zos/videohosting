@@ -57,6 +57,36 @@ def upload():
     return render_template('video/upload.html', form=form)
 
 
+# ============ СКАЧАТЬ ВИДЕО ============
+@video_bp.route('/video/<int:video_id>/download')
+def download(video_id):
+    """Скачивание видеофайла"""
+    from flask import send_from_directory, current_app
+    import os
+
+    video = Video.query.get_or_404(video_id)
+    quality = request.args.get('q')  # Получаем желаемое качество из ссылки
+    qualities = video.get_qualities()
+
+    # Определяем, какой файл отдавать
+    if quality and quality in qualities:
+        filename = qualities[quality]
+    else:
+        filename = video.filename
+
+    directory = os.path.join(current_app.config['UPLOAD_FOLDER'], 'videos')
+
+    # Формируем красивое имя для сохранения (название_видео_качество.mp4)
+    ext = os.path.splitext(filename)[1]
+    safe_title = "".join([c for c in video.title if c.isalnum() or c in (' ', '-', '_')]).strip().replace(' ', '_')
+    download_name = f"{safe_title}_{quality or 'best'}{ext}"
+
+    return send_from_directory(
+        directory,
+        filename,
+        as_attachment=True,
+        download_name=download_name
+    )
 
 # ============ ПРОВЕРКА ССЫЛКИ (AJAX) ============
 

@@ -1127,3 +1127,43 @@
         border-radius: 12px;
     }
 }
+
+/* Кнопка и меню скачивания */
+.download-wrap {
+    position: relative;
+}
+
+.download-menu {
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--primary);
+    border-radius: 6px;
+    padding: 4px;
+    display: none;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 120px;
+    z-index: 110;
+    margin-bottom: 5px;
+}
+
+.download-wrap:hover .download-menu {
+    display: flex;
+}
+
+.download-menu a {
+    padding: 8px 12px;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.download-menu a:hover {
+    background: var(--primary-dim);
+    color: var(--primary);
+}

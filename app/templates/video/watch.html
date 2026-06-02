@@ -119,13 +119,27 @@
                 <span class="badge-unlisted">🔗</span>
             {% endif %}
         </div>
-        <div class="info-right">
-            <span class="stat">👁 {{ video.views }}</span>
-            <span class="stat">📅 {{ video.created_at.strftime('%d.%m') }}</span>
-            <button class="btn-icon copy-link-btn glitch-hover"
-                    data-url="{{ url_for('video.watch', video_id=video.id, _external=True) }}"
-                    title="Копировать">📋</button>
+<div class="info-right">
+    <span class="stat">👁 {{ video.views }}</span>
+    <span class="stat">📅 {{ video.created_at.strftime('%d.%m') }}</span>
+
+    <!-- Кнопка скачивания с выбором качества -->
+    <div class="download-wrap">
+        <button class="btn-icon glitch-hover" title="Скачать">📥</button>
+        <div class="download-menu">
+            {% set quals = video.get_qualities() %}
+            {% if quals %}
+                {% for q, fname in quals.items() %}
+                    <a href="{{ url_for('video.download', video_id=video.id, q=q) }}">💾 {{ q }}</a>
+                {% endfor %}
+            {% else %}
+                <a href="{{ url_for('video.download', video_id=video.id) }}">💾 Скачать MP4</a>
+            {% endif %}
         </div>
+    </div>
+
+    <button class="btn-icon copy-link-btn glitch-hover" data-url="{{ url_for('video.watch', video_id=video.id, _external=True) }}" title="Копировать">📋</button>
+</div>
     </div>
 
     <!-- АВТОР + ТЕГИ + РЕАКЦИИ -->
